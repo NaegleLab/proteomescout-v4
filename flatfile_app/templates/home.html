@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ProteomeScout</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --teal: #009ca9;
+      --teal-dark: #007f89;
+      --ink: #1f2a36;
+      --paper: #f4fbfc;
+    }
+    body {
+      background: #ffffff;
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    .top-nav {
+      background: #ffffff;
+      border-bottom: 2px solid #d8e8ec;
+      box-shadow: 0 2px 8px rgba(22, 50, 70, 0.05);
+    }
+    .top-nav .inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0.15rem 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .brand img {
+      width: 108px;
+      height: 108px;
+      object-fit: contain;
+    }
+    .nav-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      flex-wrap: wrap;
+    }
+    .nav-pill {
+      border: 1px solid #cfe4e8;
+      color: #1e3e4c;
+      text-decoration: none;
+      background: #f8fcfd;
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.97rem;
+      font-weight: 600;
+      line-height: 1.1;
+    }
+    .nav-pill:hover {
+      border-color: var(--teal);
+      color: var(--teal-dark);
+      background: #eef8fa;
+    }
+    .shell {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .hero img {
+      max-width: 100%;
+      width: 520px;
+      height: auto;
+    }
+    .portal-wrap {
+      position: relative;
+      max-width: 760px;
+      margin: 0 auto 0.8rem;
+      min-height: 460px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .menu-circles {
+      position: absolute;
+      inset: 0;
+    }
+    .menu-circle {
+      width: 132px;
+      height: 132px;
+      border-radius: 999px;
+      border: 5px solid var(--teal-dark);
+      background: var(--teal);
+      color: #fff;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1.15;
+      font-weight: 700;
+      padding: 0.75rem;
+      box-shadow: 0 8px 18px rgba(16, 68, 78, 0.22);
+      transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+      position: absolute;
+    }
+    .menu-circle.search { left: 108px; top: 110px; }
+    .menu-circle.kstar { right: 108px; top: 110px; }
+    .menu-circle.api { left: 172px; bottom: 132px; }
+    .menu-circle.kstar-galaxy { right: 82px; bottom: 162px; }
+    .menu-circle.help { left: 50%; top: 14px; transform: translateX(-50%); }
+    .menu-circle:hover {
+      transform: translateY(-2px);
+      border-color: #93a01b;
+      background-color: #a3a510;
+      color: #fff;
+    }
+    .menu-circle.help:hover {
+      transform: translateX(-50%) translateY(-2px);
+    }
+    .desc {
+      background: #fff;
+      border: 2px solid #d1eaed;
+      border-radius: 0.8rem;
+      padding: 1rem 1.1rem;
+      box-shadow: 0 6px 14px rgba(22, 50, 70, 0.06);
+    }
+    .desc p {
+      margin-bottom: 0.6rem;
+    }
+    @media (max-width: 900px) {
+      .portal-wrap {
+        min-height: 0;
+        display: block;
+      }
+      .menu-circles {
+        position: static;
+        display: flex;
+        justify-content: center;
+        gap: 0.9rem;
+        margin: 0.8rem 0 0;
+      }
+      .menu-circle,
+      .menu-circle.search,
+      .menu-circle.kstar,
+      .menu-circle.api,
+      .menu-circle.kstar-galaxy,
+      .menu-circle.help {
+        position: static;
+        transform: none;
+      }
+      .menu-circle.help:hover {
+        transform: translateY(-2px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="top-nav" aria-label="Top Navigation">
+    <div class="inner">
+      <a class="brand" href="{{ url_for('index') }}">
+        <img src="{{ url_for('static', filename='images/proteomescout_logo.png') }}" alt="ProteomeScout Logo">
+      </a>
+      <nav class="nav-links">
+        <a class="nav-pill" href="{{ url_for('index') }}">Home</a>
+        <a class="nav-pill" href="{{ url_for('proteins.search') }}">Search Proteins</a>
+        <a class="nav-pill" href="{{ url_for('kstar.landing') }}">KSTAR</a>
+        <a class="nav-pill" href="https://usegalaxy.org/?tool_id=toolshed.g2.bx.psu.edu%2Frepos%2Fnaegle_lab%2Fkstar_calculate%2Fkstar_calculate%2F1.1.0&amp;version=latest" target="_blank" rel="noreferrer">KSTAR Galaxy</a>
+        <a class="nav-pill" href="https://github.com/NaegleLab/ProteomeScoutAPI" target="_blank" rel="noreferrer">ProteomeScoutAPI</a>
+        <a class="nav-pill" href="{{ documentation_url }}" target="_blank" rel="noreferrer">Help</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="portal-wrap" aria-label="Homepage Actions">
+      <div class="hero">
+        <img src="{{ url_for('static', filename='images/proteomescout_splash.png') }}" alt="ProteomeScout">
+      </div>
+      <div class="menu-circles">
+        <a class="menu-circle search" href="{{ url_for('proteins.search') }}" title="Find proteins from the TSV repository and open the interactive sequence/structure viewer.">Search<br>Proteins</a>
+        <a class="menu-circle kstar" href="{{ url_for('kstar.landing') }}" title="Upload activities and FPR tables to generate publication-ready KSTAR visualizations.">KSTAR<br>Plotting</a>
+        <a class="menu-circle api" href="https://github.com/NaegleLab/ProteomeScoutAPI" target="_blank" rel="noreferrer" title="Open the ProteomeScoutAPI GitHub repository for API docs, code, and usage examples.">ProteomeScout<br>API</a>
+        <a class="menu-circle kstar-galaxy" href="https://usegalaxy.org/?tool_id=toolshed.g2.bx.psu.edu%2Frepos%2Fnaegle_lab%2Fkstar_calculate%2Fkstar_calculate%2F1.1.0&amp;version=latest" target="_blank" rel="noreferrer" title="Launch the KSTAR calculate tool in Galaxy.">KSTAR<br>Galaxy</a>
+        <a class="menu-circle help" href="{{ documentation_url }}" target="_blank" rel="noreferrer" title="Use the protein viewer help page for feature details, interpretation notes, and usage guidance.">Help</a>
+      </div>
+    </section>
+
+    <section class="desc">
+      <p>ProteomeScout is a resource for proteins and post-translational modifications (PTMs).</p>
+      <p>This minimal build focuses on TSV-backed protein search/viewing and KSTAR plotting.</p>
+      <p>Getting started: explore <a href="{{ url_for('proteins.structure', protein_id=52355) }}">EGFR (52355)</a>.</p>
+    </section>
+  </main>
+</body>
+</html>

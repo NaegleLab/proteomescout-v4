@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, redirect, url_for
+from flask import Flask, render_template
 
 from flatfile_app.config import Config
 
@@ -17,6 +17,9 @@ def create_app(config_class=Config):
 
     @app.route('/')
     def index():
-        return redirect(url_for('proteins.search'))
+        return render_template(
+            'home.html',
+            documentation_url=app.config.get('DOCUMENTATION_URL', '#'),
+        )
 
     return app
