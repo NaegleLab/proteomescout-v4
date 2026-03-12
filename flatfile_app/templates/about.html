@@ -82,6 +82,21 @@
     .link-list a:hover {
       text-decoration: underline;
     }
+    .citation-list {
+      margin: 0;
+      padding-left: 1.15rem;
+    }
+    .citation-list li + li {
+      margin-top: 0.7rem;
+    }
+    .citation-list a {
+      color: var(--teal-dark);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .citation-list a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -114,6 +129,27 @@
         <p><a href="{{ proteomescout_api_url }}" target="_blank" rel="noreferrer">ProteomeScoutAPI</a>: API client code and usage examples.</p>
         <p><a href="{{ documentation_url }}" target="_blank" rel="noreferrer">Viewer Documentation</a>: feature notes and usage guidance for the protein viewer.</p>
       </div>
+    </section>
+
+    <section class="card-block">
+      <h2>How to Cite</h2>
+      <ul class="citation-list">
+        <li>
+          <strong>ProteomeScout:</strong>
+          Matlock MK, Holehouse AS, Naegle KM. ProteomeScout: a repository and analysis resource for post-translational modifications and proteins. Nucleic Acids Res. 2015;43(Database issue):D521-D530. doi: 10.1093/nar/gku1154.
+          <a href="https://pubmed.ncbi.nlm.nih.gov/25414335/" target="_blank" rel="noreferrer">PubMed</a>
+        </li>
+        <li>
+          <strong>ProteomeScoutAPI:</strong>
+          Holehouse AS, Naegle KM. Reproducible Analysis of Post-Translational Modifications in Proteomes--Application to Human Mutations. PLoS One. 2015;10(12):e0144692. doi: 10.1371/journal.pone.0144692.
+          <a href="https://pubmed.ncbi.nlm.nih.gov/26659599/" target="_blank" rel="noreferrer">PubMed</a>
+        </li>
+        <li>
+          <strong>KSTAR:</strong>
+          Crowl S, Jordan BT, Ahmed H, Ma CX, Naegle KM. KSTAR: An algorithm to predict patient-specific kinase activities from phosphoproteomic data. Nat Commun. 2022;13(1):4283. doi: 10.1038/s41467-022-32017-5.
+          <a href="https://pubmed.ncbi.nlm.nih.gov/35879309/" target="_blank" rel="noreferrer">PubMed</a>
+        </li>
+      </ul>
     </section>
   </main>
 </body>
