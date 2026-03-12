@@ -189,7 +189,7 @@
         <a class="menu-circle kstar" href="{{ url_for('kstar.landing') }}" title="Upload activities and FPR tables to generate publication-ready KSTAR visualizations.">KSTAR<br>Plotting</a>
         <a class="menu-circle api" href="https://github.com/NaegleLab/ProteomeScoutAPI" target="_blank" rel="noreferrer" title="Open the ProteomeScoutAPI GitHub repository for API docs, code, and usage examples.">ProteomeScout<br>API</a>
         <a class="menu-circle kstar-galaxy" href="https://usegalaxy.org/?tool_id=toolshed.g2.bx.psu.edu%2Frepos%2Fnaegle_lab%2Fkstar_calculate%2Fkstar_calculate%2F1.1.0&amp;version=latest" target="_blank" rel="noreferrer" title="Launch the KSTAR calculate tool in Galaxy.">KSTAR<br>Galaxy</a>
-        <a class="menu-circle help" href="{{ documentation_url }}" target="_blank" rel="noreferrer" title="Use the protein viewer help page for feature details, interpretation notes, and usage guidance.">Help</a>
+        <a class="menu-circle help" href="{{ url_for('statistics') }}" title="View species-level protein and PTM summaries from the configured data.tsv file.">Statistics</a>
       </div>
     </section>
 

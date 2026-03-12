@@ -3,6 +3,7 @@ import os
 from flask import Flask, abort, render_template, send_file, url_for
 
 from flatfile_app.config import Config
+from flatfile_app.protein_data import get_species_ptm_statistics
 
 
 def create_app(config_class=Config):
@@ -158,5 +159,16 @@ def create_app(config_class=Config):
             abort(404)
 
         return send_file(file_path, as_attachment=True, download_name=os.path.basename(file_path))
+
+    @app.route('/statistics')
+    def statistics():
+        try:
+            species_stats = get_species_ptm_statistics()
+            load_error = None
+        except Exception as exc:
+            species_stats = []
+            load_error = str(exc)
+
+        return render_template('statistics.html', species_stats=species_stats, load_error=load_error)
 
     return app

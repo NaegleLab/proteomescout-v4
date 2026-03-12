@@ -1,5 +1,6 @@
 import math
 import re
+from collections import Counter, defaultdict
 from functools import lru_cache
 
 import pandas as pd
@@ -290,3 +291,42 @@ def search_proteins(query='', peptide='', species='', limit=None):
     # Secondary sort: existing query relevance ranking (exact/prefix/name/id).
     matches.sort(key=lambda item: (-item[1], item[0]))
     return [protein for _, __, protein in matches[:max_results]]
+
+
+def get_species_ptm_statistics():
+    species_totals = defaultdict(
+        lambda: {
+            'protein_count': 0,
+            'ptm_count': 0,
+            'ptm_type_counts': Counter(),
+        }
+    )
+
+    for protein in load_protein_data().values():
+        species_name = str(protein.get('species', '') or '').strip() or 'Unspecified'
+        bucket = species_totals[species_name]
+        bucket['protein_count'] += 1
+
+        for modification in parse_modifications(protein.get('modifications', '')):
+            ptm_type = str(modification.get('modification', '') or '').strip() or 'Unspecified'
+            bucket['ptm_count'] += 1
+            bucket['ptm_type_counts'][ptm_type] += 1
+
+    rows = []
+    for species_name, totals in species_totals.items():
+        ordered_types = sorted(
+            totals['ptm_type_counts'].items(),
+            key=lambda item: (-item[1], item[0].lower()),
+        )
+        rows.append(
+            {
+                'species': species_name,
+                'protein_count': totals['protein_count'],
+                'ptm_count': totals['ptm_count'],
+                'ptm_type_count': len(ordered_types),
+                'ptm_types': ordered_types,
+            }
+        )
+
+    rows.sort(key=lambda item: (-item['protein_count'], item['species'].lower()))
+    return rows
