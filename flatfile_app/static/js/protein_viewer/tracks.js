@@ -207,11 +207,14 @@ function build_ptm_table(k, mods, protein_data) {
     
 };
 
-// could be div.metadata_text
-var Tooltip = d3.select(".metadata_text")
+// Render tooltip at body-level so it follows cursor position reliably.
+var Tooltip = d3.select("body")
     .append("div")
     .style("opacity", 0)
     .attr("class", "tooltip")
+    .style("position", "absolute")
+    .style("z-index", "9999")
+    .style("pointer-events", "none")
     .style("background-color", "white")
     .style("border", "solid")
     .style("border-width", "2px")
@@ -485,7 +488,6 @@ function DomainTrack(name, track_viewer, protein_data) {
 };
 
 DomainTrack.prototype.create = function(axis, viewer_width, domain_colors) {
-    var pfam_url = this.protein_data.pfam_url;
     this.protein_domains = $.extend(true, [], this.protein_data.domains);
     this.domain_colors = domain_colors;
 
@@ -528,14 +530,27 @@ DomainTrack.prototype.update_display = function(axis, viewer_width) {
                 .attr('width', function(d) { return axis(d.stop) - axis(d.start - 1); })
                 .attr('y', 0)
                 .attr('height', this.domain_height)
-                .attr('title', function(d) { return d.label; })
+                .attr('title', function(d) {
+                    return d.interpro_id ? d.label + ' (' + d.interpro_id + ')' : d.label;
+                })
                 .style('fill', function(d) { return track.domain_colors( d.label ); } )
                 .style('stroke', "black")
                 .style('stroke-width' ,"1px")
-                .on('mouseover', function(d) { mouseOverOpacity(this, d.label); })
+                .on('mouseover', function(d) {
+                    var tooltip = d.label;
+                    if (d.interpro_id) {
+                        var interproUrl = 'https://www.ebi.ac.uk/interpro/entry/InterPro/' + d.interpro_id + '/';
+                        tooltip += '<br>InterPro ID: <a href="' + interproUrl + '" target="_blank" rel="noreferrer">' + d.interpro_id + '</a>';
+                    }
+                    mouseOverOpacity(this, tooltip);
+                })
                 .on('mousemove', function(d) { mouseMove(this); })
                 .on('mouseout', function(d) { mouseOutOpacity(this); })
-                .on('click', function(d) { window.open(pfam_url + d.label, '_blank'); });
+                .on('click', function(d) {
+                    if (d.interpro_id) {
+                        window.open('https://www.ebi.ac.uk/interpro/entry/InterPro/' + d.interpro_id + '/', '_blank');
+                    }
+                });
 
     this.g.selectAll('text.domain')
         .data(filtered_domains)

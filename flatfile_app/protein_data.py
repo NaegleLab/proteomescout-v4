@@ -119,6 +119,47 @@ def parse_uniprot_domains(domain_string):
     return domains
 
 
+def parse_interpro_domains(domain_string):
+    """
+    Parse InterPro domains from TSV.
+    Expected format example:
+    Importin-a_IBB:IPR002652:1:93;DomainName:IPR000001:120:260
+    """
+    if not domain_string or pd.isna(domain_string):
+        return []
+
+    domains = []
+    for domain_entry in str(domain_string).split(';'):
+        domain_entry = domain_entry.strip()
+        if not domain_entry:
+            continue
+
+        parts = domain_entry.split(':')
+        if len(parts) < 4:
+            continue
+
+        try:
+            start = int(parts[-2])
+            stop = int(parts[-1])
+        except ValueError:
+            continue
+
+        accession = parts[-3]
+        label = ':'.join(parts[:-3]).strip() or accession
+
+        domains.append(
+            {
+                'label': label,
+                'interpro_id': accession,
+                'start': start,
+                'stop': stop,
+                'source': 'interpro',
+            }
+        )
+
+    return domains
+
+
 def parse_structure(structure_string):
     if not structure_string or pd.isna(structure_string):
         return []

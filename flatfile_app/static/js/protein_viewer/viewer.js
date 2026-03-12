@@ -202,9 +202,6 @@ function StructureViewer(protein_data) {
     this.create_ptm_track(this.macro_viewer);
     this.create_residue_track(this.macro_viewer, this.show_residues_size_limit >= this.protein_data.seq.length);
 
-    this.create_mutation_track(this.macro_viewer, macro_residues);
-    this.create_scansite_track(this.macro_viewer, macro_residues);
-
     this.create_activation_loop_track(this.macro_viewer);
     this.create_uniprot_domain_track(this.macro_viewer);
 //    this.create_ncbi_domain_track(this.macro_viewer);
@@ -223,9 +220,6 @@ function StructureViewer(protein_data) {
     this.create_empty_track(this.zoom_viewer);
     this.create_ptm_track(this.zoom_viewer);
     this.create_residue_track(this.zoom_viewer, true);
-
-    this.create_mutation_track(this.zoom_viewer, true);
-    this.create_scansite_track(this.zoom_viewer, true);
     
     this.create_activation_loop_track(this.zoom_viewer);
     this.create_uniprot_domain_track(this.zoom_viewer);
@@ -377,7 +371,7 @@ StructureViewer.prototype.create_region_track = function(track_viewer, name, reg
 };
 
 StructureViewer.prototype.create_domain_track = function(track_viewer) {
-    domain_track = new DomainTrack('PFam Domains', track_viewer.viewer, this.protein_data);
+    domain_track = new DomainTrack('Interpro Domains', track_viewer.viewer, this.protein_data);
     domain_track.create(track_viewer.axis, this.width, this.domain_colors);
     track_viewer.add_track(domain_track);
 };

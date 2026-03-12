@@ -6,8 +6,8 @@ from flatfile_app.protein_data import (
     get_citation_by_id,
     get_protein_by_id,
     get_species_options,
-    parse_accessions,
     parse_evidence_ids,
+    parse_interpro_domains,
     parse_modifications,
     parse_structure,
     parse_uniprot_domains,
@@ -141,7 +141,7 @@ def format_protein_regions(protein):
 
 
 def format_protein_domains(protein):
-    return sorted(parse_uniprot_domains(protein.get('uniprot_domains', '')), key=lambda item: item['start'])
+    return sorted(parse_interpro_domains(protein.get('Interpro_domains', '')), key=lambda item: item['start'])
 
 
 def format_protein_modifications(protein):
@@ -244,7 +244,7 @@ def structure(protein_id):
         experiments=formatted_experiments,
         mod_types=formatted_mod_types,
         tracks=[
-            'PFam Domains',
+            'Interpro Domains',
             'PTMs',
             'Activation Loops',
             'Uniprot Domains',
@@ -252,8 +252,6 @@ def structure(protein_id):
             'Uniprot Binding Sites',
             'Uniprot Macrostructure',
             'Uniprot Topology',
-            'Mutations',
-            'Scansite',
         ],
         data=json.dumps(viewer_data),
     )
