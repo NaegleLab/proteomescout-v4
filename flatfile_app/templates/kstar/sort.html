@@ -1,0 +1,117 @@
+<div class="tab-pane fade" id="sortKinasesSamples" role="tabpanel">
+    <div class="mb-3 mt-3">
+      <h5>Sort Kinases</h5>
+      <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sortKinases" id="sortKinasesNone" value="none" checked />
+          <label class="form-check-label" for="sortKinasesNone">No Sorting</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sortKinases" id="sortKinasesActivityDesc" value="by_activity_desc" />
+          <label class="form-check-label" for="sortKinasesActivityDesc">By Activity (Descending)</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sortKinases" id="sortKinasesActivityAsc" value="by_activity_asc" />
+          <label class="form-check-label" for="sortKinasesActivityAsc">By Activity (Ascending)</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sortKinases" id="sortKinasesManual" value="manual" />
+          <label class="form-check-label" for="sortKinasesManual">Manual Reordering</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sortKinases" id="sortKinasesHier" value="by_clustering" />
+          <label class="form-check-label" for="sortKinasesHier">By Hierarchical Clustering</label>
+        </div>
+      </div>
+      
+      <!-- Dendrogram Options for Kinases -->
+      <div id="kinasesDendrogramOption" class="ms-4 mt-2" style="display: none;">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="showKinasesDendrogramInside" id="showKinasesDendrogramInside" />
+          <label class="form-check-label" for="showKinasesDendrogramInside">Show dendrogram </label>
+        </div>
+      </div>
+      
+      <div id="kinasesDendrogramColorContainer" class="ms-4 mt-2" style="display: none;">
+        <div class="form-group">
+          <label for="kinases_dendrogram_color" class="form-label">Kinases Dendrogram Color</label>
+          <input type="color" class="form-control form-control-color" 
+                 id="kinases_dendrogram_color" name="kinases_dendrogram_color" 
+                 value="#000000" title="Choose kinases dendrogram color">
+        </div>
+      </div>
+      
+      <!-- Manual Kinase Ordering Container -->
+      <div id="manualKinaseOrderContainer" style="display: none; margin-top: 15px;">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Drag and drop to reorder kinases</span>
+            <div>
+              <input type="text" id="kinaseSearchBox" class="form-control" placeholder="Search kinases..." style="width: 200px;">
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="sortable-list mb-3">
+              <ul id="sortableKinaseList" class="list-unstyled mb-0">
+                <!-- Will be populated with kinases dynamically -->
+              </ul>
+            </div>
+            <button id="applyKinaseOrderButton" class="btn btn-primary">Apply Order</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="mb-3">
+      <h5>Sort Samples</h5>
+      <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sortSamples" id="sortSamplesNone" value="none" checked />
+          <label class="form-check-label" for="sortSamplesNone">No Sorting</label>
+        </div>
+        <!-- New Radio Buttons for Sorting by Selected Kinase -->
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sortSamples" id="sortSamplesBySelectedKinaseDesc" value="by_selected_kinase_desc" />
+          <label class="form-check-label" for="sortSamplesBySelectedKinaseDesc">By Selected Kinase (High to Low)</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sortSamples" id="sortSamplesBySelectedKinaseAsc" value="by_selected_kinase_asc" />
+          <label class="form-check-label" for="sortSamplesBySelectedKinaseAsc">By Selected Kinase (Low to High)</label>
+        </div>
+        <!-- End New Radio Buttons -->
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sortSamples" id="sortSamplesHier" value="by_clustering" />
+          <label class="form-check-label" for="sortSamplesHier">By Hierarchical Clustering</label>
+        </div>
+      </div>
+
+      <!-- Container for Selecting Reference Kinase for Sample Sorting -->
+      <div id="sampleSortRefKinaseContainer" class="ms-4 mt-2" style="display: none;">
+        <div class="form-group">
+          <label for="sampleSortRefKinaseSelect" class="form-label">Select Reference Kinase:</label>
+          <select class="form-select" id="sampleSortRefKinaseSelect" name="sample_sort_ref_kinase">
+            <!-- Options will be populated by sort.js -->
+            <option value="" disabled selected>Select a kinase...</option>
+          </select>
+        </div>
+      </div>
+      <!-- End Container for Selecting Reference Kinase -->
+      
+      <!-- Dendrogram Option for Samples -->
+      <div id="samplesDendrogramOption" class="ms-4 mt-2" style="display: none;">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="showSamplesDendrogram" id="showSamplesDendrogram" />
+          <label class="form-check-label" for="showSamplesDendrogram">Show dendrogram</label>
+        </div>
+      </div>
+
+      <div id="samplesDendrogramColorContainer" class="ms-4 mt-2" style="display: none;">
+        <div class="form-group">
+          <label for="samples_dendrogram_color" class="form-label">Samples Dendrogram Color</label>
+          <input type="color" class="form-control form-control-color" 
+                 id="samples_dendrogram_color" name="samples_dendrogram_color" 
+                 value="#000000" title="Choose samples dendrogram color">
+        </div>
+      </div>
+    </div>
+  </div>

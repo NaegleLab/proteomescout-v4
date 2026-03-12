@@ -1,0 +1,45 @@
+<div id="plotOutput" class="form-section" style="display: none;">
+    <h3>Generated Plot</h3>
+    <div id="integratedDendrogramLayout">
+      <img id="plotImageIntegrated" src="" style="max-width: 100%;" />
+    </div>
+    <!-- Enhanced Download Section -->
+    <div class="mt-3 mb-3">
+      <div class="row">
+        <div class="col-md-6">
+          <label for="figureNameInput" class="form-label">Figure name:</label>
+          <input type="text" id="figureNameInput" class="form-control" value="KSTAR_dotplot" />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Type of file to save as:</label>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="downloadFormat" id="formatPng" value="png" checked>
+              <label class="form-check-label" for="formatPng">.png</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="downloadFormat" id="formatJpg" value="jpg">
+              <label class="form-check-label" for="formatJpg">.jpg</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="downloadFormat" id="formatPdf" value="pdf">
+              <label class="form-check-label" for="formatPdf">.pdf</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="downloadFormat" id="formatSvg" value="svg">
+              <label class="form-check-label" for="formatSvg">.svg</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="downloadFormat" id="formatEps" value="eps">
+              <label class="form-check-label" for="formatEps">.eps</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="downloadFormat" id="formatTif" value="tif">
+              <label class="form-check-label" for="formatTif">.tif</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button id="downloadBtn" class="btn btn-success mt-3">Download Figure</button>
+    </div>
+  </div>

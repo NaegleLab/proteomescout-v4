@@ -1,0 +1,139 @@
+.GO_list {
+	margin-top:15px;
+}
+
+.GO_list li:hover {
+  background-color: #FFC;
+}
+.GO_list li {
+  margin-bottom: 0.2em;
+}
+.GO_id {
+	vertical-align: top;
+}
+
+.GO_term {
+	vertical-align: top;
+	margin-left:1em;
+	width: 195px;
+	max-width: 195px;
+	display: inline-block;
+}
+
+.errortext {
+	color:red;
+	text-align:center;
+}
+
+.expression_form {
+	background-color: #AAA;
+	border: 1px gray solid;
+	width: 100%;
+	padding: 3px;
+	padding-left:20px;
+}
+
+.expression_data {
+	display:none;
+}
+
+.expression_form_entry {
+	margin-right:50px;
+}
+
+.expression_chart {
+	width:90%;
+	margin-left:auto;
+	margin-right:auto;
+	text-align:justify;
+}
+
+.expression_level {
+    stroke:white;
+    fill:steelblue;
+}
+
+.expression_float {
+	font:10px sans-serif;
+	fill:black;
+}
+
+.expression_tissue {
+	font:11px sans-serif;
+	fill:black;
+}
+
+.expression_chart table {
+	margin-left:auto;
+	margin-right:auto;
+}
+
+#proteinInfo {
+  margin-top: 1em;
+  margin-bottom: 1em;
+ 
+  margin-left:auto;
+  margin-right: auto;
+  
+  width:800px;
+}
+
+#proteinInfo legend {
+	text-align:center;
+}
+
+.search_form label {
+  width: 80px;
+  display:inline-block;
+  text-align:right;
+}
+.protein_list {
+    margin-top: 1em;
+    margin-bottom: 1em;
+
+    margin-left:auto;
+    margin-right: auto;
+    width:98%;
+}
+
+.result_count {
+	text-align:center;
+}
+
+table.protein_list, .protein_list table {
+	width:98%;
+}
+
+.protein_list td{
+	padding-bottom:10px;
+}
+
+
+.experiment {
+	margin-left:auto;
+	margin-right:auto;
+	margin-top:50px;
+	margin-bottom:50px;
+	width:750px;
+}
+
+.modsite {
+	font-family:"Lucida Console", Monaco, monospace;
+}
+
+.peptide {
+	font-family:"Lucida Console", Monaco, monospace;
+}
+
+.experiment_data .run {
+	display:none;
+}
+
+.experiment_data {
+	text-align:center;
+}
+
+.experiment_title {
+	padding:10px;
+	border:solid 1px black;
+}

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/proteins.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/protein_viewer.css') }}">
+  <style>
+    body { background: #f5f7fa; }
+    .page-shell { max-width: 1280px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    .viewer-header { display: flex; justify-content: space-between; gap: 1rem; align-items: start; margin-bottom: 1rem; }
+    .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .control-card { background: #fff; border: 1px solid #d8e0e8; border-radius: 0.75rem; padding: 1rem; }
+    .control-card h2 { font-size: 1rem; margin-bottom: 0.75rem; }
+    .control-card .form-check { margin-bottom: 0.5rem; }
+    .viewer-stage { background: #fff; border: 1px solid #d8e0e8; border-radius: 0.75rem; padding: 1rem; }
+    .protein-meta { color: #5c6b7a; }
+    .protein-meta .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div id="structure_data" class="data" data-structure="{{ data | e }}"></div>
+  <main class="page-shell">
+    <header class="viewer-header">
+      <div>
+        <div class="mb-2">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('proteins.search') }}">Back to search</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kstar.landing') }}">Open KSTAR</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ viewer_help_url }}" target="_blank" rel="noreferrer">Viewer help</a>
+        </div>
+        <h1 class="h3 mb-1">{{ protein.name }}</h1>
+        <div class="protein-meta">
+          <span class="mono">ID {{ protein.id }}</span>
+          {% if protein.gene %}<span> · Gene {{ protein.gene }}</span>{% endif %}
+          {% if protein.species %}<span> · {{ protein.species }}</span>{% endif %}
+          {% if protein.accessions %}<span> · Accessions {{ protein.accessions | join(', ') }}</span>{% endif %}
+        </div>
+      </div>
+      <div>
+        <button class="btn btn-primary zoomout-tool" type="button">Reset zoom</button>
+      </div>
+    </header>
+
+    <section class="control-grid">
+      <div class="control-card mods">
+        <h2>PTM Filters</h2>
+        {% for mod_type in mod_types %}
+        <div class="form-check">
+          <input class="form-check-input modtoggle" type="checkbox" id="{{ mod_type|replace(' ','_') }}" checked>
+          <label class="form-check-label" for="{{ mod_type|replace(' ','_') }}">{{ mod_type }}</label>
+        </div>
+        {% endfor %}
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-sm btn-outline-secondary all" type="button">Show all</button>
+          <button class="btn btn-sm btn-outline-secondary none" type="button">Hide all</button>
+        </div>
+      </div>
+
+      <div class="control-card exps">
+        <h2>Experiments</h2>
+        {% for exp_id, exp_name in experiments.items() %}
+        <div class="form-check">
+          <input class="form-check-input exptoggle" type="checkbox" id="e{{ exp_id }}" checked>
+          <label class="form-check-label" for="e{{ exp_id }}">{{ exp_name }}</label>
+        </div>
+        {% endfor %}
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-sm btn-outline-secondary all" type="button">Show all</button>
+          <button class="btn btn-sm btn-outline-secondary none" type="button">Hide all</button>
+        </div>
+      </div>
+
+      <div class="control-card tracks">
+        <h2>Tracks</h2>
+        {% for track in tracks %}
+        <div class="form-check">
+          <input class="form-check-input tracktoggle" type="checkbox" id="{{ track }}" checked>
+          <label class="form-check-label" for="{{ track }}">{{ track }}</label>
+        </div>
+        {% endfor %}
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-sm btn-outline-secondary all" type="button">Show all</button>
+          <button class="btn btn-sm btn-outline-secondary none" type="button">Hide all</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="viewer-stage">
+      <div class="protein_viewer">
+        <div class="data"></div>
+        <div class="metadata_text"></div>
+        <div id="pview" class="viewer"></div>
+      </div>
+      <div class="ptm_metadata mt-4"></div>
+    </section>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="{{ url_for('static', filename='js/protein_viewer/helpers.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/protein_viewer/zoom.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/protein_viewer/tracks.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/protein_viewer/viewer.js') }}"></script>
+</body>
+</html>

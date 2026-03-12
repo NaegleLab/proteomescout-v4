@@ -1,0 +1,41 @@
+<div class="tab-pane fade" id="filterKinasesSamples" role="tabpanel">
+    <div class="mb-3 mt-3">
+      <input type="checkbox" class="form-check-input" id="restrictKinases" name="restrictKinases" />
+      <label class="form-check-label" for="restrictKinases">Restrict to kinases with significance in at least one sample</label>
+    </div>
+    <div class="mb-3">
+      <label for="manualKinaseEdit" class="form-label">Manually edit kinases in plot:</label>
+      <select class="form-select" id="manualKinaseEdit" name="manualKinaseEdit" onchange="handleKinaseEditChange()">
+        <option value="none" selected>No</option>
+        <option value="select">Select Specific Kinases</option>
+        <option value="remove">Remove Specific Kinases</option>
+      </select>
+    </div>
+    <div id="kinaseSelectionContainer" class="mb-3" style="display: none;">
+      <label id="kinaseSelectLabel" for="kinaseSelect" class="form-label">Select kinases:</label>
+      <select class="form-select" id="kinaseSelect" name="kinaseSelect[]" multiple></select>
+      <small class="text-muted">Use the search box to filter and select multiple kinases</small>
+    </div>
+    <hr />
+    <h5>Filter Samples</h5>
+    <div class="mb-3">
+      <label for="sampleSelect" class="form-label">Manually select samples to plot:</label>
+      <select class="form-select" id="sampleSelect" name="sampleSelect[]" multiple></select>
+      <small class="text-muted">Use the search box to filter and select multiple samples</small>
+    </div>
+    <div class="mb-3">
+      <input type="checkbox" class="form-check-input" id="changeXLabel" name="changeXLabel" />
+      <label class="form-check-label" for="changeXLabel">Change the x-label for each sample</label>
+    </div>
+    <div id="customLabelsContainer" style="display: none; margin-top: 10px;">
+      <div class="row">
+        <div class="col-12">
+          <h5>Enter custom labels for samples:</h5>
+          <div id="customLabelsInputs" class="row">
+            <!-- Inputs added dynamically -->
+          </div>
+          <button id="changeLabelButton" class="btn btn-primary mt-3">Change Labels</button>
+        </div>
+      </div>
+    </div>
+  </div>

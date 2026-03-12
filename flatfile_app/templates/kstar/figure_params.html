@@ -1,0 +1,42 @@
+<div class="tab-pane fade show active" id="figureParams" role="tabpanel">
+    <div class="row mb-3 mt-3">
+      <div class="col-md-6">
+        <label for="figureWidth" class="form-label">Width (in)</label>
+        <input type="number" id="figureWidth" name="figureWidth" class="form-control" value="4" step="0.1" />
+      </div>
+      <div class="col-md-6">
+        <label for="figureHeight" class="form-label">Height (in)</label>
+        <input type="number" id="figureHeight" name="figureHeight" class="form-control" value="10" step="0.1" />
+      </div>
+    </div>
+    <div class="mb-3">
+      <label for="fontSize" class="form-label">Fontsize</label>
+      <input type="number" id="fontSize" name="fontSize" class="form-control" value="10" />
+    </div>
+    <h5>Color Scheme</h5>
+    <div class="mb-2">
+      <label class="form-label">How to show significant activity:</label><br />
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="significantActivity" id="binaryOption" value="binary" checked />
+        <label class="form-check-label" for="binaryOption">Binary</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="significantActivity" id="gradientOption" value="gradient" />
+        <label class="form-check-label" for="gradientOption">Gradient</label>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+      <div style="text-align: center;">
+        <label for="backgroundColor" style="display: block; font-weight: bold;">Background Color</label>
+        <input type="color" id="backgroundColor" name="backgroundColor" value="#FFFFFF" style="width: 37.5px; height: 37.5px; border: 1px solid #ccc; border-radius: 5px;" />
+      </div>
+      <div style="text-align: center;">
+        <label for="activityColor" style="display: block; font-weight: bold;">Color to Represent Activity</label>
+        <input type="color" id="activityColor" name="activityColor" value="#FF3300" style="width: 37.5px; height: 37.5px; border: 1px solid #ccc; border-radius: 5px;" />
+      </div>
+      <div style="text-align: center;">
+        <label for="lackActivityColor" style="display: block; font-weight: bold;">Color to Represent Lack of Activity</label>
+        <input type="color" id="lackActivityColor" name="lackActivityColor" value="#6b838f" style="width: 37.5px; height: 37.5px; border: 1px solid #ccc; border-radius: 5px;" />
+      </div>
+    </div>
+  </div>

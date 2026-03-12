@@ -1,0 +1,64 @@
+.ptm_metadata {
+    margin-top:1em;
+    margin-bottom:1em;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+.protein_viewer {
+    margin-left:auto;
+    margin-right:auto;
+    width:900px;
+    margin-top:20px;
+    margin-bottom:20px;
+	border:solid 1px black;
+}
+
+.protein_viewer .data{
+    display:none;
+}
+
+.protein_viewer .toolkit {
+    width:900px;
+	border-collapse: collapse;
+	margin-left:auto;
+	margin-right:auto;
+    background: #AAA;
+}
+
+.toolkit button {
+    margin:5px;
+    margin-right:0px;
+}
+
+.protein_viewer .viewer_svg{
+    width:900px;
+}
+
+.ui-dialog ul {
+    vertical-align: top; 
+    margin: 0; 
+    padding: 0; 
+    list-style: none;
+}
+
+.viewer {
+    cursor:text;
+}
+
+.viewer_svg circle {
+    cursor:default;
+}
+
+.viewer_svg .domain {
+    cursor:pointer;
+}
+
+.viewer_svg text {
+    cursor:default;
+    pointer-events:none;
+}
+
+.viewer_svg .region {
+    cursor:default;
+}
