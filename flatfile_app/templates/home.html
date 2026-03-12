@@ -171,12 +171,9 @@
         <img src="{{ url_for('static', filename='images/proteomescout_logo.png') }}" alt="ProteomeScout Logo">
       </a>
       <nav class="nav-links">
-        <a class="nav-pill" href="{{ url_for('index') }}">Home</a>
-        <a class="nav-pill" href="{{ url_for('proteins.search') }}">Search Proteins</a>
-        <a class="nav-pill" href="{{ url_for('kstar.landing') }}">KSTAR</a>
-        <a class="nav-pill" href="https://usegalaxy.org/?tool_id=toolshed.g2.bx.psu.edu%2Frepos%2Fnaegle_lab%2Fkstar_calculate%2Fkstar_calculate%2F1.1.0&amp;version=latest" target="_blank" rel="noreferrer">KSTAR Galaxy</a>
-        <a class="nav-pill" href="https://github.com/NaegleLab/ProteomeScoutAPI" target="_blank" rel="noreferrer">ProteomeScoutAPI</a>
-        <a class="nav-pill" href="{{ documentation_url }}" target="_blank" rel="noreferrer">Help</a>
+        <a class="nav-pill" href="{{ url_for('downloads') }}">Downloads</a>
+        <a class="nav-pill" href="{{ url_for('about') }}">About</a>
+        <a class="nav-pill" href="{{ config.NAEGLE_LAB_URL }}" target="_blank" rel="noreferrer">Naegle Lab</a>
       </nav>
     </div>
   </header>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About ProteomeScout</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --teal: #009ca9;
+      --teal-dark: #007f89;
+      --ink: #1f2a36;
+    }
+    body {
+      background: #ffffff;
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    .top-nav {
+      background: #ffffff;
+      border-bottom: 2px solid #d8e8ec;
+      box-shadow: 0 2px 8px rgba(22, 50, 70, 0.05);
+    }
+    .top-nav .inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0.15rem 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+    }
+    .brand img {
+      width: 108px;
+      height: 108px;
+      object-fit: contain;
+    }
+    .nav-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      flex-wrap: wrap;
+    }
+    .nav-pill {
+      border: 1px solid #cfe4e8;
+      color: #1e3e4c;
+      text-decoration: none;
+      background: #f8fcfd;
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.97rem;
+      font-weight: 600;
+      line-height: 1.1;
+    }
+    .nav-pill:hover {
+      border-color: var(--teal);
+      color: var(--teal-dark);
+      background: #eef8fa;
+    }
+    .shell {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1rem 3rem;
+    }
+    .card-block {
+      background: #fff;
+      border: 2px solid #d1eaed;
+      border-radius: 1rem;
+      padding: 1.25rem 1.35rem;
+      box-shadow: 0 6px 14px rgba(22, 50, 70, 0.06);
+      margin-bottom: 1rem;
+    }
+    .card-block h1,
+    .card-block h2 {
+      margin-top: 0;
+    }
+    .link-list a {
+      color: var(--teal-dark);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .link-list a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header class="top-nav" aria-label="Top Navigation">
+    <div class="inner">
+      <a class="brand" href="{{ url_for('index') }}">
+        <img src="{{ url_for('static', filename='images/proteomescout_logo.png') }}" alt="ProteomeScout Logo">
+      </a>
+      <nav class="nav-links">
+        <a class="nav-pill" href="{{ url_for('downloads') }}">Downloads</a>
+        <a class="nav-pill" href="{{ url_for('about') }}">About</a>
+        <a class="nav-pill" href="{{ naegle_lab_url }}" target="_blank" rel="noreferrer">Naegle Lab</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="card-block">
+      <h1>About ProteomeScout</h1>
+      <p>ProteomeScout is a resource for exploring proteins and post-translational modifications. This minimal build keeps the flat-file protein viewer and KSTAR plotting workflows available without the legacy database-backed stack.</p>
+    </section>
+
+    <section class="card-block">
+      <h2>Included tools</h2>
+      <div class="link-list">
+        <p><a href="{{ url_for('proteins.search') }}">Protein Search</a>: search the TSV-backed protein dataset and open the interactive viewer.</p>
+        <p><a href="{{ url_for('kstar.landing') }}">KSTAR Plotting</a>: upload activities and FPR tables to render kinase activity plots.</p>
+        <p><a href="{{ kstar_galaxy_url }}" target="_blank" rel="noreferrer">KSTAR Galaxy</a>: launch the Galaxy-hosted KSTAR calculate workflow.</p>
+        <p><a href="{{ proteomescout_api_url }}" target="_blank" rel="noreferrer">ProteomeScoutAPI</a>: API client code and usage examples.</p>
+        <p><a href="{{ documentation_url }}" target="_blank" rel="noreferrer">Viewer Documentation</a>: feature notes and usage guidance for the protein viewer.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
