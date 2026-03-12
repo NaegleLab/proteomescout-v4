@@ -194,6 +194,12 @@ function StructureViewer(protein_data) {
     
     this.domain_colors = d3.scaleOrdinal(d3.schemeSet2); //was schemeCategory20
     this.region_colors =  d3.scaleOrdinal(d3.schemePaired); //was schemeCategory20b
+    // Fixed, colorblind-safe mapping for UniProt secondary structure types.
+    this.uniprot_structure_colors = {
+        helix: '#0072B2',
+        strand: '#E69F00',
+        turn: '#CC79A7',
+    };
     this.residue_colors = create_amino_acid_colors();
 
     var macro_residues = this.protein_data.seq.length <= this.show_residues_size_limit;
@@ -208,9 +214,7 @@ function StructureViewer(protein_data) {
     this.create_domain_track(this.macro_viewer);
 
     this.create_region_track(this.macro_viewer, "Uniprot Structure", "uniprot_structure")
-    this.create_region_track(this.macro_viewer, "Uniprot Binding Sites", "uniprot_sites")
-    this.create_region_track(this.macro_viewer, "Uniprot Macrostructure", "uniprot_macro")
-    this.create_region_track(this.macro_viewer, "Uniprot Topology", "uniprot_topological")
+    this.create_region_track(this.macro_viewer, "Macro Molecular", "macro_molecular")
 
     this.macro_viewer.view_residues(0, protein_data.seq.length);
 
@@ -227,9 +231,7 @@ function StructureViewer(protein_data) {
     this.create_domain_track(this.zoom_viewer);
 
     this.create_region_track(this.zoom_viewer, "Uniprot Structure", "uniprot_structure")
-    this.create_region_track(this.zoom_viewer, "Uniprot Binding Sites", "uniprot_sites")
-    this.create_region_track(this.zoom_viewer, "Uniprot Macrostructure", "uniprot_macro")
-    this.create_region_track(this.zoom_viewer, "Uniprot Topology", "uniprot_topological")
+    this.create_region_track(this.zoom_viewer, "Macro Molecular", "macro_molecular")
 
     this.zoom_viewer.hide();
     this.zoom_enabled = false;
@@ -366,7 +368,18 @@ StructureViewer.prototype.create_ncbi_domain_track = function(track_viewer) {
 
 StructureViewer.prototype.create_region_track = function(track_viewer, name, region_name) {
     region_track = new RegionTrack(name, track_viewer.viewer, this.protein_data);
-    region_track.create(track_viewer.axis, this.width, this.region_colors, region_name);
+
+    var color_fn = this.region_colors;
+    if (region_name === 'uniprot_structure') {
+        var structure_colors = this.uniprot_structure_colors;
+        var fallback_region_colors = this.region_colors;
+        color_fn = function(label) {
+            var key = String(label || '').toLowerCase();
+            return structure_colors[key] || fallback_region_colors(label);
+        };
+    }
+
+    region_track.create(track_viewer.axis, this.width, color_fn, region_name);
     track_viewer.add_track(region_track);
 };
 

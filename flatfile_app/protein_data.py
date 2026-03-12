@@ -87,6 +87,27 @@ def parse_evidence_ids(evidence_string):
     return [item.strip() for item in str(evidence_string).split(',') if item.strip()]
 
 
+def parse_site_evidence_entries(evidence_string):
+    """
+    Parse evidence entries aligned to modification entries.
+
+    Primary expected format is semicolon-separated (one evidence entry per PTM entry),
+    e.g. "1886;1887;1803" where the nth evidence maps to the nth modification.
+    Falls back to comma-separated input for legacy datasets.
+    """
+    if not evidence_string or pd.isna(evidence_string):
+        return []
+
+    text = str(evidence_string).strip()
+    if not text:
+        return []
+
+    if ';' in text:
+        return [item.strip() for item in text.split(';') if item.strip()]
+
+    return [item.strip() for item in text.split(',') if item.strip()]
+
+
 def parse_uniprot_domains(domain_string):
     if not domain_string or pd.isna(domain_string):
         return []

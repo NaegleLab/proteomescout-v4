@@ -7,6 +7,7 @@ from flatfile_app.protein_data import (
     get_protein_by_id,
     get_species_options,
     parse_evidence_ids,
+    parse_site_evidence_entries,
     parse_interpro_domains,
     parse_modifications,
     parse_structure,
@@ -133,9 +134,7 @@ def format_protein_regions(protein):
         'activation_loops': get_activation_loops(protein),
         'uniprot_domains': get_uniprot_domains(protein),
         'uniprot_structure': get_uniprot_structure(protein),
-        'uniprot_sites': get_uniprot_sites(protein),
-        'uniprot_macro': get_uniprot_macro(protein),
-        'uniprot_topological': get_uniprot_topological(protein),
+        'macro_molecular': _parse_macro_regions(protein.get('macro_molecular', '')),
         'ncbi_domains': get_ncbi_domains(protein),
     }
 
@@ -146,22 +145,68 @@ def format_protein_domains(protein):
 
 def format_protein_modifications(protein):
     experiments = {}
+    experiment_links = {}
     modification_types = set()
     modifications_by_site = {}
 
     modifications = parse_modifications(protein.get('modifications', ''))
-    evidence_ids = parse_evidence_ids(protein.get('evidence', ''))
+    evidence_entries = parse_site_evidence_entries(protein.get('evidence', ''))
 
-    for experiment_id in evidence_ids:
-        citation = get_citation_by_id(experiment_id)
-        if citation is not None:
-            experiments[experiment_id] = citation.get('Name', f'Experiment {experiment_id}')
-        else:
-            experiments[experiment_id] = f'Experiment {experiment_id}'
+    def citation_is_current(citation):
+        current_value = str(citation.get('Current', citation.get('current', ''))).strip().lower()
+        return current_value in {'true', '1', 'yes', 'y'}
 
-    for modification in modifications:
+    def normalize_pmid(value):
+        pmid = str(value or '').strip()
+        if pmid.endswith('.0'):
+            pmid = pmid[:-2]
+        return pmid
+
+    for index, modification in enumerate(modifications):
         position = modification['position']
         modification_type = modification['modification']
+        evidence_entry = evidence_entries[index] if index < len(evidence_entries) else ''
+        if not evidence_entry:
+            continue
+
+        candidate_experiment_ids = [item.strip() for item in evidence_entry.split(',') if item.strip()]
+        if not candidate_experiment_ids:
+            continue
+
+        grouped_experiments = []
+        for experiment_id in candidate_experiment_ids:
+            citation = get_citation_by_id(experiment_id)
+            if citation is None or not citation_is_current(citation):
+                continue
+
+            pmid = normalize_pmid(citation.get('PMID', ''))
+            group_id = f'pmid:{pmid}' if pmid else f'exp:{experiment_id}'
+            citation_url = str(citation.get('URL', citation.get('url', '')) or '').strip()
+            fallback_url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else '#'
+            preferred_url = citation_url or fallback_url
+
+            if group_id not in experiments:
+                experiments[group_id] = citation.get('Name', f'Experiment {experiment_id}')
+
+            # Prefer explicit citation URLs; otherwise keep PMID fallback.
+            if (
+                group_id not in experiment_links
+                or (
+                    citation_url
+                    and experiment_links[group_id].startswith('https://pubmed.ncbi.nlm.nih.gov/')
+                )
+            ):
+                experiment_links[group_id] = preferred_url
+
+            grouped_experiments.append(
+                {
+                    'group_id': group_id,
+                }
+            )
+
+        if not grouped_experiments:
+            continue
+
         modification_types.add(modification_type)
 
         if position not in modifications_by_site:
@@ -174,14 +219,22 @@ def format_protein_modifications(protein):
             }
 
         modifications_by_site[position]['mods'].setdefault(modification_type, [])
-        for experiment_id in evidence_ids:
+        seen_group_ids = {
+            item['experiment'] for item in modifications_by_site[position]['mods'][modification_type]
+        }
+
+        for grouped in grouped_experiments:
+            if grouped['group_id'] in seen_group_ids:
+                continue
+
             modifications_by_site[position]['mods'][modification_type].append(
                 {
-                    'experiment': experiment_id,
-                    'experiment_url': '#',
+                    'experiment': grouped['group_id'],
+                    'experiment_url': experiment_links.get(grouped['group_id'], '#'),
                     'has_data': False,
                 }
             )
+            seen_group_ids.add(grouped['group_id'])
 
     return experiments, sorted(modification_types), modifications_by_site
 
@@ -249,9 +302,7 @@ def structure(protein_id):
             'Activation Loops',
             'Uniprot Domains',
             'Uniprot Structure',
-            'Uniprot Binding Sites',
-            'Uniprot Macrostructure',
-            'Uniprot Topology',
+            'Macro Molecular',
         ],
         data=json.dumps(viewer_data),
     )
