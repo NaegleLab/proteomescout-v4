@@ -1,0 +1,9 @@
+.d3-tip {
+    position: absolute;
+    /* display: inline-block; */
+    background: rgba(224, 240, 255, 0.8);
+    border-radius: 5px;
+    padding: 2px;
+    border: 2px solid black;
+    /* border-bottom: 1px dotted black; */
+  }

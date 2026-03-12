@@ -1,0 +1,133 @@
+
+{% extends 'proteomescout/base.html' %}
+{% block content %}
+<script>
+    var cond_number = 1;
+    var condition_types =[  {type:'cell', text:'Cell Type'},
+                            {type:'tissue',text:'Tissue Type'},
+                            {type:'drug',text:'Drug'},
+                            {type:'stimulus',text:'Stimulus'},
+                            {type:'environment',text:'Environmental Conditions'}]
+    
+    function add_condition(type, text){
+        var sel = document.createElement("select");
+        sel.setAttribute("class","condiiton_type");
+        sel.setAttribute("id", "condition_type_"+cond_number)
+        sel.setAttribute("name", "condition_type");
+        
+        for (var i = 0; i < condition_types.length;i++){
+            var option = document.createElement("option");
+            option.value=condition_types[i]['type'];
+            option.text = condition_types[i]['text'];
+            if(option.value == type){
+                option.selected=true
+            }
+            sel.add(option, null);
+        }
+        var text_condition = document.createElement("input");
+        text_condition.setAttribute("name", "condition_text");
+        text_condition.setAttribute("type","text");
+        text_condition.setAttribute("class", "condition_text");
+        text_condition.setAttribute("id", "condition_text_" + cond_number)
+        text_condition.setAttribute("required",  true);
+        if(text){
+            text_condition.setAttribute("value", text)
+        }
+        var delete_button = document.createElement("button");
+        delete_button.setAttribute("type","button")
+        delete_button.setAttribute("class", "btn btn-danger")
+        
+        var current_id = cond_number;
+        delete_button.innerHTML = "X";
+        delete_button.addEventListener ("click", function() {
+            delete_condition(current_id);
+        });
+
+        var newDiv = document.createElement("div");
+        newDiv.setAttribute("class", "form-group row")
+        newDiv.setAttribute("id", "cond_div_"+cond_number);
+        newDiv.append(sel);
+        newDiv.append(text_condition);
+        newDiv.append(delete_button);
+        
+        $(".conditions").append(newDiv);
+        cond_number = cond_number + 1;
+    }
+
+    function delete_condition(i){
+        var element = document.getElementById("cond_div_"+i);
+        element.parentNode.removeChild(element);
+
+    }
+
+
+
+    $(document).ready( function (){
+        conditions = JSON.parse({{ old_conditions | tojson }})
+        console.log(conditions)
+        for(var key in conditions){
+            console.log(conditions[key])
+            add_condition(conditions[key].type, conditions[key].value)
+        }
+    });
+</script>
+
+
+
+<div class="container">
+
+{% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-header">Upload Errors</div>
+                <div class="card-body">
+                    <ul class=flashes>
+                        {% for message in messages %}
+                        <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <h2>Experimental Conditions</h2>
+    <div class="card">
+        <div class="card-header"><h3>Instructions</h3></div>
+        <div class="card-body">
+            <span>Use this form to enter information about the conditions used in this experiment.</span><br />
+              <span>Suggestions will be made automatically as you type. Please use existing suggestions if they closely matches your experiment.</span><br />
+              <span>Examples:</span>
+              <ul>
+                  <li><span class="condition-name">Drug</span>: dasatinib</li>
+                  <li><span class="condition-name">Stimulus</span>: EGF</li>
+                  <li><span class="condition-name">Stimulus</span>: insulin</li>
+                  <li><span class="condition-name">Cell Line</span>: HEK293</li>
+                  <li><span class="condition-name">Environmental</span>: Hypoxia</li>
+                  <li><span class="condition-name">Environmental</span>: Heat Shock</li>
+              </ul>
+
+            
+        </div>
+    </div>
+    <hr>
+    <form method="POST">      
+        <div class="card">
+            <div class="card-header"><h3>Configure Experimental Conditions</h3></div>
+            <div class="card-body">
+                <div class="conditions"></div>
+                <button type="button" class="btn btn-primary" onclick="add_condition()">Add Condition</button> 
+            </div>
+            <hr>
+            <div clss = "card-body">
+                <button type="submit" class = "btn btn-primary" name="submit_button" value = "btn-continue">Continue</button>
+                <button type="cancel" class = "btn btn-danger" name="submit_button" value = "btn-cancel" formnovalidate>Cancel</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+
+
+
+{% endblock %}

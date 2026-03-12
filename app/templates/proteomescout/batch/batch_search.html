@@ -1,0 +1,59 @@
+{% extends 'proteomescout/base.html' %}
+
+{% block title %} 
+    {{title}} 
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{{url_for('static', filename = 'css/error.css')}}" />
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+
+  <!-- Flash messages section -->
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-warning">
+        {% for message in messages %}
+          {{ message }}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <h2>Protein Batch Search Job Creator</h2>
+  <div class = "card card-body bg-light">
+
+    <!-- Add the login notice here -->
+    {% if not current_user.is_authenticated %}
+    <p>You must login to use this resource. <a class="nav-link" href="{{url_for('auth.login')}}" style="border: 1px solid; padding: 5px; display: inline-block;">Log in</a></p>
+    {% endif %}
+  <form action="" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.accessions.label }}<br>
+            {{ form.accessions(rows="25", cols="50") }}
+        </p>
+        <p>{{ form.terms_of_use() }} {{ form.terms_of_use.label }}</p>
+        <p>{{ form.submit() }}</p>
+    </form>
+
+    {% if 'terms_of_use' in form.errors %}
+        <div class = "errorbox">
+            {{ form.errors['terms_of_use'][0] }}
+        </div>
+    {% else %}
+        {% for errors in form.errors['accessions'] %}
+            <div class = "errorbox">
+                {{ errors }}
+            </div>
+        {% endfor %}
+    {% endif %}
+   
+    </div>
+
+</div>
+
+{% endblock %}

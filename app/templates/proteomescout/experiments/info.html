@@ -1,0 +1,37 @@
+<div class = "container">
+    <!-- <h3>Experiment</h3> -->
+    <dl class="row">
+        <dt class="col-sm-3">Experiment Name</dt>
+        <dd class="col-sm-9"><a href = "{{experiment.get_url()}}">{{experiment.name}}</a></dd>
+    </dl>
+    <dl class="row">
+        <dt class="col-sm-3">Citation</dt>
+        <dd class="col-sm-9">
+        {{experiment.get_long_citation_string()}}
+        {% if experiment.has_PMID() %}
+            <a href = {{experiment.get_pubmed_url()}}>[pubmed]</a>
+        {% endif %}
+
+        </dd>
+    </dl>
+    <dl class="row">
+        <dt class="col-sm-3">Description</dt>
+        <dd class="col-sm-9">{{experiment.description}}</dd>
+    </dl>
+    <dl class="row">
+        <dt class="col-sm-3">Conditions</dt>
+        <dd class="col-sm-9">
+        {% for condition in experiment.conditions %}
+            <dl class="row">
+                <dt class="col-sm-2">{{condition.type.capitalize()}}</dt>
+                <dd class="col-sm-9">{{condition.value}}</dd>
+            </dl>
+        {% endfor %}
+        </dd>
+    </dl>
+    <dl class="row">
+        <dt class="col-sm-3">Date Loaded</dt>
+        <dd class="col-sm-9">{{experiment.date.strftime('%B %d %Y')}}</dd>
+    </dl>
+
+</div>

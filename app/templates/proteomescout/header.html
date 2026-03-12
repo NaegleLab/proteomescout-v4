@@ -1,0 +1,148 @@
+
+
+<div class = "header">
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <a class="navbar-brand" href="{{url_for('info.home')}}">
+    <img alt="ProteomeScout" src={{ url_for('static', filename='images/proteomescout_logo.png') }}/></a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" href="{{url_for('info.home')}}">Home <span class="sr-only">(current)</span></a>
+      </li>
+    
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle"  id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Experiments
+        </a>
+        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <a class="dropdown-item" href="{{url_for('experiment.landing')}}">Browse Experiments</a>
+           {% if current_user.is_authenticated%}
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item" href="{{url_for('account.manage_experiments')}}">My Experiments</a>
+            <a class="dropdown-item" href="#">Annotate Sites</a>
+            <a class="dropdown-item" href="{{url_for('upload.start')}}">Upload Dataset</a>
+          {% endif %}
+        </div>
+      </li>
+
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle"  id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Proteins
+        </a>
+        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <a class="dropdown-item" href="{{url_for('protein.search')}}">Search</a>
+          <a class="dropdown-item" href="{{url_for('batch.batch_search')}}">Batch Search</a>
+        </div>
+      </li>
+
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle"  id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          More
+        </a>
+        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <a class="dropdown-item" href="{{url_for('compendia.compendia_listing')}}">Downloads</a>
+          <a class="dropdown-item" href="#">Statistics</a>
+          <a class="dropdown-item" href="#">About</a>
+        </div>
+      </li>
+
+
+      
+    </ul>
+    
+
+    <ul class="navbar-nav ml-auto">
+      {% if current_user.is_authenticated%}
+
+            <li class="nav-item active">
+                <a class="nav-link" href="{{url_for('account.manage')}}">
+                <i class = "fa fa-user-circle-o"></i>{{current_user.username}}</a>
+            </li>
+
+            <li class="nav-item active">
+                <a class="nav-link" href="{{url_for('auth.logout')}}">
+                <i class = "fa fa-sign-out"></i>Logout</a>
+            </li>
+
+        {% else %}
+
+            <li class="nav-item active">
+                    <a class="nav-link" href="{{url_for('auth.signup')}}">
+                    <i class = "fa fa-user-plus"></i>Sign Up</a>
+            </li>
+
+            <li class="nav-item active">
+                    <a class="nav-link" href="{{url_for('auth.login')}}">
+                    <i class = "fa fa-sign-in"></i>Login</a>
+            </li>
+        {% endif %}
+    </ul>
+  </div>
+</nav>
+
+<!--
+ <nav class="navbar navbar-inverse">
+  <div class="container-fluid">
+    <div class="navbar-header">
+        <a href = "{{url_for('info.home')}}" >
+        <img alt="ProteomeScout" src={{ url_for('static', filename='images/proteomescout_logo.png') }}/> 
+        </a> 
+    </div>
+    <ul class="nav navbar-nav">
+
+        
+        
+        <li class="dropdown">
+            <a class="dropdown-toggle" data-toggle="dropdown" href="#">Experiments
+            <span class="caret"></span></a>
+            <ul class="dropdown-menu">
+            <li><a href="#">Browse Experiments</a></li>
+            {% if current_user.is_authenticated%}
+                <li><a href="#">My Experiments</a></li>
+                <li><a href="#">Annotate Sites</a></li>
+                <li><a href="#">Upload Dataset</a></li>
+            {% endif %}
+            
+            </ul>
+        </li>
+
+        <li class="dropdown">
+            <a class="dropdown-toggle" data-toggle="dropdown" href="#">Proteins
+            <span class="caret"></span></a>
+            <ul class="dropdown-menu">
+            <li><a href="{{url_for('protein.search')}}">Search</a></li>
+            <li><a href="#">Batch Search</a></li>
+            </ul>
+        </li>
+        <li class="dropdown">
+            <a class="dropdown-toggle" data-toggle="dropdown" href="#">More
+            <span class="caret"></span></a>
+            <ul class="dropdown-menu">
+            <li><a href="#">Downloads</a></li>
+            <li><a href="#">Statistics</a></li>
+            <li><a href="#">About</a></li>
+            <li><a href="#">Help</a></li>
+            </ul>
+        </li>
+
+    </ul>
+    <ul class="nav navbar-nav navbar-right">
+        {% if current_user.is_authenticated%}
+            <li><a href="#">{{current_user.username}}</a></li>
+            <li><a href="#">My Experiments</a></li>
+            <li><a href="{{url_for('auth.logout')}}"><span class="glyphicon glyphicon-log-out"></span> Logout</a></li>
+        {% else %}
+            <li><a href="{{url_for('auth.signup')}}"><span class="glyphicon glyphicon-user"></span> Sign Up</a></li>
+            <li><a href="{{url_for('auth.login')}}"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+        {% endif %}
+    </ul>
+  </div>
+</nav> 
+</div>
+-->
+

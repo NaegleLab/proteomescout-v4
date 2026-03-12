@@ -1,0 +1,10 @@
+/env38/
+/.project
+*.pyc
+/app.db
+.DS_Store
+*.env
+.env
+logs/
+app/data
+celerybeat-schedule.db

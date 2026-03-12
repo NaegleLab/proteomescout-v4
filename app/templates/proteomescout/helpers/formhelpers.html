@@ -1,0 +1,12 @@
+{% macro render_errors(field) %}
+  {% if field.errors %}
+    <ul class=errors>
+    {% for error in field.errors %}
+      <div class="invalid-feedback">
+          {{ error }}
+        </div>
+    {% endfor %}
+    </ul>
+  {% endif %}
+  </dd>
+{% endmacro %}

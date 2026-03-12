@@ -1,0 +1,91 @@
+{% extends 'proteomescout/base.html' %}
+
+{% block title %}
+    {{title}}
+{% endblock %}
+
+{% block content %}
+{% include 'proteomescout/experiments/navbar.html'%}
+<link rel="stylesheet" type="text/css" href="{{url_for('static', filename = 'css/go_map.css')}}" />
+
+
+<div class = "container">
+    <h3 style="margin-bottom:0">GO Map</h3>
+    <p style="text-align:center;margin:0;color:#999;font-family:courier;font-size:12px">click to zoom</p>
+    
+    <div id = "GO_map">
+        <div id = "go_map_data" class="data" data-gotree="{{go_tree}}"></div> 
+        <svg id = "go_map_chart" width="960" height="960"></svg>
+    </div>
+
+    <h3>Molecular Functions</h3>
+    <table id = "molfunc_table" class="display table table-striped" style="width:100%">
+        <thead class="thead-dark">
+        <tr>
+            <th></th>
+            <th>GO</th>
+            <th>Term</th>
+            <th>Proteins</th>       
+        </tr>
+        </thead>
+        <tbody>
+        {% for term in go_tables.molecular_function %}
+        <tr> 
+            <td>temp</td>
+            <td>{{ term[0]}}</td>
+            <td>{{ term[1]}}</td>
+            <td>{{ term[2] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table> 
+    <hr/>
+    <h3>Cellular Components</h3>
+    <table id = "cell_table" class="display table table-striped" style="width:100%">
+        <thead class="thead-dark">
+        <tr>
+            <th></th>
+            <th>GO</th>
+            <th>Term</th>
+            <th>Proteins</th>       
+        </tr>
+        </thead>
+        <tbody>
+        {% for term in go_tables.cellular_component %}
+        <tr> 
+            <td></td>
+            <td>{{ term[0]}}</td>
+            <td>{{ term[1]}}</td>
+            <td>{{ term[2] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table> 
+    <hr/>
+    <h3>Biological Processes</h3>
+    <table id = "bioprocess_table" class="display table table-striped" style="width:100%">
+        <thead class="thead-dark">
+        <tr>
+            <th></th>
+            <th>GO</th>
+            <th>Term</th>
+            <th>Proteins</th>       
+        </tr>
+        </thead>
+        <tbody>
+        {% for term in go_tables.biological_process %}
+        <tr> 
+            <td></td>
+            <td>{{ term[0]}}</td>
+            <td>{{ term[1]}}</td>
+            <td>{{ term[2] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table> 
+</div>
+
+<script type="text/javascript" src="{{url_for('static', filename = 'js/go.map.js')}}" ></script>
+<script type="text/javascript" src="{{url_for('static', filename = 'js/experiment.go.js')}}" ></script>
+
+{% endblock %}

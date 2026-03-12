@@ -1,0 +1,59 @@
+{% extends 'proteomescout/base.html' %}
+
+{% block title %} 
+    {{title}} 
+{% endblock %}
+
+{% block css %}
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/loader.css')}}">
+
+{% endblock %}
+
+{% block jscript %}
+
+    <script src="{{ url_for('static', filename='js/protein_search.js')}}"></script>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+  <h2>Protein Search</h2>
+  <div class = "card card-body bg-light">
+  <form action="" method="post" id="search-form" novalidate>
+        {{ form.csrf_token }}
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.protein.label }}<br>
+            {{ form.protein(size=32) }}
+        </p>
+        <p>
+            {{ form.peptide.label }}<br>
+            {{ form.peptide(size=32) }}
+        </p>
+        <p>
+            {{ form.species.label }}<br>
+            {{ form.species(size=32) }}
+        </p>
+        <p>
+            {{ form.protein_names() }} {{ form.protein_names.label }} 
+        </p>
+        
+        <p>{{ form.submit() }}</p>
+
+        <p>
+            <a href="{{url_for('batch.batch_search')}}" title="batch">Batch Search</a>
+        </p>
+    </form>
+    </div>
+
+    <div class = "table" id="search-results">
+        
+    </div>
+
+</div>
+
+
+
+{% endblock %}

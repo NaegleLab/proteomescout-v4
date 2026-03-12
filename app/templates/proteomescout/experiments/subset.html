@@ -1,0 +1,19 @@
+{% extends 'proteomescout/base.html' %}
+
+{% block title %}
+    {{title}}
+{% endblock %}
+
+{% block content %}
+{% include 'proteomescout/experiments/navbar.html'%}
+
+<div class = "container"></div>
+{% if current_user.is_authenticated %}
+    {% include 'proteomescout/dataset/explorer.html'%}
+{% else %}
+    {% include 'proteomescout/auth/forbidden.html'%}
+
+{% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends 'proteomescout/base.html' %}
+{% block content %}
+
+<script>
+   
+    function upload_field_visibility(){
+        /**
+         * Sets field visibility based on upload type
+         **/
+        if($("#new_dataset").is(':checked')){
+                $("#parent_exp").hide();
+                $("#change_name").hide();
+                $("#change_desc").hide();
+        }else if($("#append_dataset").is(':checked')){
+            $("#parent_exp").show();
+            $("#change_name").hide();
+            $("#change_desc").hide();
+        }else if($("#reload_dataset").is(':checked')){
+            $("#parent_exp").show();
+            $("#change_name").hide();
+            $("#change_desc").hide();
+        }else if($("#extend_dataset").is(':checked')){
+            $("#parent_exp").show();
+            $("#change_name").show();
+            $("#change_desc").show();
+        }
+    }
+    function radio_disable(){
+        var size =  document.querySelector("#user-data").dataset.size
+        
+        if(size ==0){
+            document.getElementById("append_dataset").disabled = true;
+            document.getElementById("reload_dataset").disabled = true;
+            document.getElementById("extend_dataset").disabled = true;
+
+        }
+        
+
+    }
+
+    $(document).ready(function () {
+        // only allow reload, append, extend radio buttons to be active if a parent experiment is used
+        radio_disable();
+
+        //initialize 
+        upload_field_visibility();
+
+        // upload type behavior
+        $("input[name=upload_type]").change(function(){
+            upload_field_visibility()
+        });
+
+        // tooltip
+        $('[data-toggle="tooltip"]').tooltip()
+
+        // show file name if selected
+        $(".custom-file-input").on("change", function() {
+            var fileName = $(this).val().split("\\").pop();
+                $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+    });
+    });
+
+</script>
+
+<div id="user-data" class="data" data-size="{{experiment_size}}"></div>
+<div class="container">
+
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-header">Upload Errors</div>
+                <div class="card-body">
+                    <ul class=flashes>
+                        {% for message in messages %}
+                        <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    
+
+    <div class= "card">
+
+        <form method="POST" enctype="multipart/form-data">
+            <div class="card-body">
+                <div class="card">
+                    <div class="card-header">Experiment Upload Type</div>
+                    <div class="card-body">
+                        <!-- Upload Type -->
+                        <div class="form-group row">
+                            <div class ="col-sm-2"><b>Upload Type</b></div>
+
+                            <div class="col-sm-10">
+                                <div class="custom-control custom-radio custom-control-inline">
+                                    <input type="radio" id="new_dataset" name="upload_type" value="new" class="custom-control-input" checked>
+                                    <label class="custom-control-label" for="new_dataset"
+                                        data-toggle="tooltip" data-placement="bottom" title="Create a new experiment"
+                                        >New</label>
+                                </div>
+                                <div class="custom-control custom-radio custom-control-inline">
+                                    <input type="radio" id="append_dataset" name="upload_type" value="append" class="custom-control-input">
+                                    <label class="custom-control-label" for="append_dataset"
+                                        data-toggle="tooltip" data-placement="bottom" title="Append data to an existing experiment"
+                                        >Append</label>
+                                </div>
+                                <div class="custom-control custom-radio custom-control-inline">
+                                    <input type="radio" id="reload_dataset" name="upload_type" value="reload" class="custom-control-input">
+                                    <label class="custom-control-label" for="reload_dataset"
+                                        data-toggle="tooltip" data-placement="bottom" title="Replace an existing experiment with new data"
+                                        >Reload</label>
+                                </div>
+                                <div class="custom-control custom-radio custom-control-inline">
+                                    <input type="radio" id="extend_dataset" name="upload_type" value="extend" class="custom-control-input">
+                                    <label class="custom-control-label" for="extend_dataset"
+                                        data-toggle="tooltip" data-placement="bottom" title="Create a new experiment using modified data from an existing experiment"
+                                        >Extension</label>
+                                </div>
+                                
+                            </div>
+                        </div>
+
+                        <!-- Parent Experiment -->
+                        <div class="form-group row" id="parent_exp">
+                            <div class ="col-sm-2"><b>Parent Experiment</b></div>
+                            <div class="col-sm-10">
+                                <select id="parent_experiment" class="form-control" name="parent_experiment">
+                                    {% for experiment in user_experiments%}
+                                        <option value="{{experiment.id}}">{{experiment.name}}</option>
+                                    {% endfor %}
+                                </select>
+                                
+
+                            </div>
+                        </div>
+
+                        <!-- Extension Title -->
+                        <div class="form-group row" id="change_name">
+                            <div class ="col-sm-2"><b>Extension Title</b></div>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" name="extension_title">
+                                
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="form-group row" id="change_desc">
+                            <div class ="col-sm-2"><b>Description</b></div>
+                            <div class="col-sm-10">
+                                <textarea class="form-control" name="extension_description" rows="3"></textarea>                       
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            <hr>
+
+            <div class="card">
+                <div class="card-header">Experiment Data</div>
+                <div class="card-body">
+                    <div class="form-group row">
+                        <div class="col-sm-2"><b>Data Input File</b></div>
+                        <div class="col-sm-10">
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="data_file"name="data_file" >
+                                <label class="custom-file-label" for="data_file">Choose file</label>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Continue</button>
+        </div>
+    </form>
+
+</div>
+
+
+
+{% endblock %}
+
+

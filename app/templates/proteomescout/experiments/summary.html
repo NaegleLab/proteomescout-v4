@@ -1,0 +1,99 @@
+{% extends 'proteomescout/base.html' %}
+
+{% block title %}
+    {{title}}
+{% endblock %}
+
+{% block content %}
+{% include 'proteomescout/experiments/navbar.html'%}
+{% include 'proteomescout/experiments/info.html'%}
+
+<script type="text/javascript" src="{{url_for('static', filename = 'js/utils.js')}}" ></script>
+<script type="text/javascript" src="{{url_for('static', filename = 'js/base64.js')}}" ></script>
+<script type="text/javascript" src="{{url_for('static', filename = 'js/export.svg.js')}}" ></script>
+<script type="text/javascript" src="{{url_for('static', filename = 'js/seqlogo.js')}}" ></script>
+<script type="text/javascript" src="{{url_for('static', filename = 'js/experiment.summary.js')}}" ></script>
+
+
+<div id = "seqdata" class="data" data-seq="{{sequence_profile}}" ></div>
+
+<div class = "container">
+    <h3>Experiment Data Summary</h3>
+    <dl class="row">
+        <dt class="col-sm-3">Proteins</dt>
+        <dd class="col-sm-9">{{measurement_summary.proteins}}</dd>
+    </dl>
+    <dl class="row">
+        <dt class="col-sm-3">Measured Peptides</dt>
+        <dd class="col-sm-9">{{measurement_summary.measured}}</dd>
+    </dl>
+    <dl class="row">
+        <dt class="col-sm-3">Modification Sites</dt>
+        <dd class="col-sm-9">{{measurement_summary.modifications}}</dd>
+    </dl>
+    <dl class="row">
+        <dt class="col-sm-3">Rejected Peptides</dt>
+        <dd class="col-sm-9">{{rejected_peptides}}</dd>
+    </dl>
+
+    <table class="table table-bordered ">
+        <thead class = "thead-dark">
+            <tr>
+            <th scope="col">By Residue</th>
+            <th scope="col">By Modification Type</th>
+            <th scope="col">By Species</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <table class="table table-borderless">
+                    <tbody>
+                    {% for residue, num in measurement_summary.by_residue.items() %}
+                        <tr>
+                            <td><b>{{residue}}</b></td>
+                            <td>{{num}}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                    </table>
+                </td>
+                <td>
+                    <table class="table table-borderless">
+                    <tbody>
+                    {% for type, num in measurement_summary.by_type.items() %}
+                        <tr>
+                            <td><b>{{type}}</b></td>
+                            <td>{{num}}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                    </table>
+                </td>
+                <td>
+                    <table class="table table-borderless">
+                    <tbody>
+                    {% for species, num in measurement_summary.by_species.items() %}
+                        <tr>
+                            <td><b>{{species}}</b></td>
+                            <td>{{num}}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                    </table>
+                </td>
+            </tr>
+            
+        </tbody>
+    </table>
+    
+    <hr/>
+    <h3>Peptide Sequence Profile</h3>
+ 
+    
+    <div id="seqchart"></div> 
+
+
+</div>
+
+{% endblock %}

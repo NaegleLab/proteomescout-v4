@@ -1,0 +1,57 @@
+{% extends 'proteomescout/base.html' %}
+{% block content %}
+
+<style>
+    .axis { font: 14px sans-serif; }
+    .clabel{ font: 14px sans-serif;}
+</style>
+
+{% include 'proteomescout/proteins/protein_navbar.html'%}
+<div id = "expdata" class="data" data-all="{{expression_data}}"></div>
+<div id="temp"></div>
+<div class = "container">
+    <h6>
+        Expression Data comes from the Genomics Institute Of The Novartis
+        Research Institute <a target="_blank" href="http://symatlas.gnf.org/">SymAtlas Project</a>
+    </h6>
+    <div class="card">
+        <div class = "card-header">
+        <form class="form-inline">
+            
+                <div class="col-auto">
+                    <label class="my-1 mr-2" for="expression_probeid">Probeset ID:</label>
+                    <select class="custom-select my-1 mr-sm-2" id="expression_probeid" >
+                        {% for probe in probe_ids %}
+                            <option>{{probe}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                <label for="expression_collection">Collection:</label>
+                <select id="expression_collection" class="browser-default custom-select">
+                    {% if collections|length > 1%}
+                        <option selected="selected">all</option>
+                    {% endif %}
+                        {% for col in collections %}
+                            <option>{{col}}</option>
+                        {% endfor %}
+                </select>
+                </div>
+        
+        </form>
+    </div>
+
+    
+    <div class = "card-body" id="expression_chart">
+		
+    </div>
+    {% if expression_data|length == 0%}
+        <div>There is no expression data for this species and/or protein</div>
+    {% endif %}
+
+</div>
+
+<script type="text/javascript" src="{{url_for('static', filename='js/protein.expression.js')}}"></script>
+<script type="text/javascript" src="{{url_for('static', filename='js/charts/barchart.js')}}"></script>
+
+{% endblock %}

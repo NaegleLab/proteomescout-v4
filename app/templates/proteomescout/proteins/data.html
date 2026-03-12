@@ -1,0 +1,42 @@
+{% extends 'proteomescout/base.html' %}
+{% block content %}
+{% include 'proteomescout/proteins/protein_navbar.html'%}
+
+<div class = "container">
+    {% if experiment_data|length == 0%}
+        <div>No matching data was found </div>
+    {% endif %}
+
+    <div class="experiment">
+        {% for experiment in experiment_data %}
+            <div class="experiment_id" content="{{experiment['id']}}" style="display:none"></div>
+                <!-- <div class="experiment_title">
+                    <a tal:attributes="href request.application_url + '/experiments/' + str(experiment['id'])" tal:content="experiment['title']"></a>
+                </div> -->
+                <div class="experiment_data">
+                    {% for data in experiment['data'] %}
+                        <div class="run">
+                            <div class="name" content="{{data['run']}}"></div>
+                            <div class="units" content="{{data['units']}}"></div>
+                            <div class="peptides" content="{{','.join(data['peptides'])}}"></div>
+                            {% for row in data['values'] %}
+                                <div class="datapoint" content="{{','.join(row)}}"></div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                    <div class="chart"></div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+
+
+<script type="text/javascript" src="{{url_for('static', filename='js/graph.js')}}"></script>
+<script type="text/javascript" src="{{url_for('static', filename='js/data.js')}}"></script>
+
+<script type="text/javascript" src="{{url_for('static', filename='js/export.svg.js')}}"></script>
+
+{% endblock %}

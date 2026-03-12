@@ -1,0 +1,56 @@
+{% extends 'proteomescout/base.html' %}
+
+{% block title %}
+    {{title}}
+{% endblock %}
+
+{% block content %}
+    <div class = "container">
+        <h4>Compendia</h4>
+        <table class="table table-striped">
+            <thead class="thead-dark">
+            <tr>
+                <th>Compendia</th>
+                <th>Description</th>
+                <th>Authors</th>
+                <th>Journal Info</th>       
+            </tr>
+            </thead>
+            <tbody>
+            {% for comp in compendia %}
+            <tr> 
+                
+                <td><a href = "#">{{ comp.name}}</a></td>
+                <td>{{ comp.description}}</td>
+                <td>{{ comp.author}}</td>
+                <td>{{ comp.get_citation_string() }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table> 
+
+        <hr/>
+        <h4>Experiments</h4>
+        <table class="table table-striped">
+            <thead class="thead-dark">
+            <tr>
+                <th>Experiment</th>
+                <th>Description</th>
+                <th>Authors</th>
+                <th>Journal Info</th>       
+            </tr>
+            </thead>
+            <tbody>
+            {% for exp in experiments %}
+            <tr> 
+                <td><a href = "{{url_for('experiment.home', experiment_id=exp.id)}}">{{ exp.name }}</a></td>
+                <td>{{ exp.description}}</td>
+                <td>{{ exp.author}}</td>
+                <td>{{ exp.get_citation_string() }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table> 
+    </div>
+
+{% endblock %}

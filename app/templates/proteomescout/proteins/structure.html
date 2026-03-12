@@ -1,0 +1,205 @@
+{% extends 'proteomescout/base.html' %}
+<link rel="stylesheet" type="text/css" href="{{url_for('static', filename = 'css/proteins.css')}}" />
+<link rel="stylesheet" type="text/css" href="{{url_for('static', filename = 'css/protein_viewer.css')}}" />
+
+{% block content %}
+{% include 'proteomescout/proteins/protein_navbar.html'%}
+<div id="structure_data" class="data" data-structure="{{data}}"></div>
+<div id="test"></div>
+<!-- <div>"{{data}}"</div> -->
+<div class = "container">
+    <!-- <h1>{{pageTitle}}</h1> -->
+
+    <div class="protein_viewer">
+        <div class="data"></div>
+        <div class="metadata_text"></div>
+        <div class="toolkit">
+
+            <button class="btn btn-primary zoomout-tool"><i class="fa fa-search-minus"></i></button>
+
+            
+            <!-- Button to Open the Filter PTM Modal -->
+            <button type="button" class="btn btn-primary ptm-tool" data-toggle="modal" data-target="#ptmModal">
+                Filter PTMs
+            </button>
+            
+            <!-- Filter PTM Modal -->
+            <div class="modal mods" id="ptmModal">
+                <div class="modal-dialog">
+                <div class="modal-content">
+            
+                    <!-- Modal Header -->
+                    <div class="modal-header">
+                    <h4 class="modal-title">Filter PTMs</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <!-- Modal body -->
+                    <div class="modal-body">
+                        {% for mod_type in mod_types%}
+                        <div class="form-check">
+                            <label class="form-check-label">
+                                <input type="checkbox" class="form-check-input modtoggle" id="{{mod_type|replace(' ','_')}}" value="" checked>{{mod_type}}
+                            </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <!-- Modal footer -->
+                    <div class="modal-footer">
+                        <button class="btn btn-info all">Show All</button>
+                        <button class="btn btn-info none">Hide All</button>
+                        <!-- <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button> -->
+                    </div>
+            
+                </div>
+                </div>
+            </div>
+
+            <!-- Button to Open the Filter Experiment Modal -->
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#expModal">
+                Filter Experiments
+            </button>
+            
+            <!-- Filter Experiment Modal -->
+            <div class="modal exps" id="expModal">
+                <div class="modal-dialog">
+                <div class="modal-content">
+            
+                    <!-- Modal Header -->
+                    <div class="modal-header">
+                    <h4 class="modal-title">Filter Experiments</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <!-- Modal body -->
+                    <div class="modal-body">
+                        {% for exp_id, exp_name in experiments.items() %}
+                        <div class="form-check">
+                            <label class="form-check-label">
+                                <input type="checkbox" class="form-check-input exptoggle" id="e{{exp_id}}" value="" checked>{{exp_name}}
+                            </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <!-- Modal footer -->
+                    <div class="modal-footer">
+                        <button class="btn btn-info all">Show All</button>
+                        <button class="btn btn-info none">Hide All</button>
+                        <!-- <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button> -->
+                    </div>
+            
+                </div>
+                </div>
+            </div>
+
+
+            <!-- Button to Open the Filter Tracks Modal -->
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#trackModal">
+                Filter Tracks
+            </button>
+            
+            <!-- Filter Tracks Modal -->
+            <div class="modal tracks" id="trackModal">
+                <div class="modal-dialog">
+                <div class="modal-content">
+            
+                    <!-- Modal Header -->
+                    <div class="modal-header">
+                    <h4 class="modal-title">Filter Tracks</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <!-- Modal body -->
+                    <div class="modal-body">
+                        {% for track in tracks%}
+                        <div class="form-check">
+                            <label class="form-check-label">
+                                <input type="checkbox" class="form-check-input tracktoggle" id="{{track}}" value="" checked>{{track}}
+                            </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <!-- Modal footer -->
+                    <div class="modal-footer">
+                        <button class="btn btn-info all">Show All</button>
+                        <button class="btn btn-info none">Hide All</button>
+                        <!-- <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button> -->
+                    </div>
+            
+                </div>
+                </div>
+            </div>
+
+
+
+
+
+            <!-- <button class="zoomout-tool">Disable Zoom</button>
+            <button class="ptm-tool">Filter PTMs</button>
+            <button class="exp-tool">Filter Experiments</button>
+            <button class="track-tool">Filter Tracks</button>
+            <button class="svg-tool">Export SVG</button>
+            <a href="${protein_viewer_help_page}" target="_blank"><button class="help-tool">Help</button></a>
+
+            <div title="Modification Types" class="mods">
+                <ul>
+                    {% for mod_type in mod_types%}
+                    <li>
+                        <input class="modtoggle" type="checkbox" id="{{mod_type|replace(' ','_')}}" checked />
+                        <label for="{{mod_type|replace(' ','_')}}">"{{mod_type}}"</label>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <button class="all">Show All</button>
+                <button class="none">Hide All</button>
+            </div>
+
+            <div title="Experiments" class="exps">
+                <ul>
+                    {% for exp_id, name in experiments.items() %}
+                        <li>
+                            <input class="exptoggle" type="checkbox" id="e{{exp_id}}" value="{{name}}" checked />
+                            <label for="e{{exp_id}}">"{{name}}"</label>
+                        </li>
+                        
+                    {% endfor %}
+                    
+                </ul>
+                <button class="all">Show All</button>
+                <button class="none">Hide All</button>
+            </div>
+            <div title="Protein Features" class="tracks">
+                <ul>
+                    {% for track in tracks %}
+                    <li>
+                        <input class="tracktoggle" type="checkbox" id="{track}}" checked />
+                        <label for="{{track}}">"{{track}}"</label>
+                    </li>
+
+                    {% endfor %}
+                </ul>
+            </div> -->
+        </div>
+        <div id="pview" class="viewer"></div>
+    </div>
+    <div class="ptm_metadata"></div>
+</div>
+
+    <!-- <script type="text/javascript" src="{{url_for('static', filename = 'js/utils.js')}}"></script>  -->
+    <!-- <script type="text/javascript" src="{{url_for('static', filename = 'js/export.svg.js')}}"></script> -->
+    <!-- <script type="text/javascript" src="{{url_for('static', filename = 'js/include/base64.js')}}"></script> -->
+    <!-- <script>
+        var pointerX = -1;
+        var pointerY = -1;
+        document.onmousemove = function(event) {
+            pointerX = event.pageX;
+            pointerY = event.pageY;
+        }
+        setInterval(pointerCheck, 1000);
+        function pointerCheck() {
+            console.log('Cursor at: '+pointerX+', '+pointerY);
+        }
+    </script> -->
+    <script type="text/javascript" src="{{url_for('static', filename = 'js/protein_viewer/zoom.js')}}" ></script> 
+    <script type="text/javascript" src="{{url_for('static', filename = 'js/protein_viewer/tracks.js')}}" ></script> 
+    <script type="text/javascript" src="{{url_for('static', filename = 'js/protein_viewer/viewer.js')}}" ></script>
+
+{% endblock %}

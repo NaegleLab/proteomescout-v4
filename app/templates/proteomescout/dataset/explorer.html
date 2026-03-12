@@ -1,0 +1,129 @@
+<div class="container">
+    <div class = "subset_select">
+        <h1>Dataset Explorer</h1>
+            Use the search form below to perform the following tasks:
+            <ul>
+                <li>Explore a smaller portion of a large dataset based on a common feature</li>
+                <li>Generate hypotheses based on enrichment between dynamics and annotations or annotations of different sources</li>
+                <li>View enrichment in clustering imported from outside (e.g. Self organizing maps, kmeans etc.)</li>
+            </ul>
+            
+            <div id="field-data" class="data" data-field="{{field_data}}"></div>
+            <div id="initial-query" class="data" data-query="{{initial_query}}"></div>
+
+        <h2>Input and Output</h2>
+        <div class = "card card-body bg-light">
+
+        
+            
+            <form>
+                <h4>Export Experiment for Analysis</h4>
+                <div class="form-group-inline">
+                    <label for="annotate">Annotate</label>
+                    <select id="annotate" name="annotate">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary" name="export-experiment">Export Experiment</button>
+
+                <hr>
+                <h4>Import Annotation File</h4>
+                <div class="form-group-inline">
+                    <label for="annotate_name">Name: </label>
+                    <input type = "text" name="annotationname">
+                    <!-- <label for="annotate-file">File: </label> -->
+                    <input type="file"  name="annotationfile">
+                </div>
+                <!-- <div class="form-group-inline">
+                    <label for="annotate-file">File: </label>
+                    <input type="file"  id="annotate-file">
+                </div> -->
+                <button type="submit" class="btn btn-sm btn-primary" name="upload-annotations">Import Annotations</button>
+
+                <hr>
+                <h4>Choose Anotation Set</h4>
+                <div class="form-group-inline">
+                    <select name="annotation_set" id="select-annotation">
+                        <option></option>
+                        <!-- {% for set_id in annotation_sets %}
+                            <option value="{{set_id}}">{{annotation_sets[set_id]}}</option>
+                        {% endfor %} -->
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-primary" id="choose-annotations" name="choose-annotations">Select Annotation Set</button>
+
+                </div>
+
+                <hr>
+                <h4>View Clustering Results</h4>
+                <div class="form-group-inline">
+                    <select id="cluster-set">
+                    </select>
+                    <button type="button" class="btn btn-sm btn-primary" id="show-clusters">Show All Clusters From Set</button>
+
+                </div>
+
+                <hr>
+                <h4>MCAM Enrichment</h4>
+                <button type="button" class="btn btn-sm btn-primary" id="mcam-enrichment">Run MCAM</button>
+            
+            </form>
+
+
+        </div>
+        <h2>Subset Selection</h2>
+        <div class = "card card-body bg-light">
+            <form> 
+                <h4>Open Saved Subsets</h4>
+                <div class="form-group-inline">
+                    <select id="saved-subset-select" name="saved-subset-select">
+                        <option></option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-primary" id="open-saved-subset">View Subset</button>
+                    <button type="submit" class="btn btn-sm btn-primary" id="share-saved-subset">Share Subset</button>
+                </div>
+                <hr>
+                <h4>Motif Search Parameters</h4>
+                <div class="form-group-inline">
+                    <label for="motif_length">Length</label>
+                    <select id="motif-length-select">
+                        <option value="None">None</option>
+                            <option value="3">7-mer</option>
+                            <option value="4">9-mer</option>
+                            <option value="5">11-mer</option>
+                            <option value="6">13-mer</option>
+                            <option value="7">15-mer</option>
+                    </select>
+                </div>
+
+                <hr>
+                <h4>Subset Filter Conditions</h4>
+                <div class="form-group-inline">
+                    <label for="background-select">Background: </label>
+                    <select id="background-select">
+                        <option value="experiment">Entire Experiment</option>  
+                    </select>
+                </div>
+                <div class="form-group-inline">
+                    <button type="button" class="btn btn-sm btn-primary" id="add-condition">Add Condition</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="remove-condition">Remove Condition</button>
+                
+                </div>
+                <hr>
+                <div class="form-group-inline">
+                    <button type="button" class="btn btn-sm btn-success" id="compute-subset">Compute Subset</button>
+                    <button type="button" class="btn btn-sm btn-danger" id="clear-form">Clear</button>
+                
+                </div>
+                
+            </form>
+        </div>
+
+    </div>
+
+    <h2>Open Subsets</h2>
+    <div id="open-subsets">
+        <ul></ul>
+    </div>
+</div>
+<script type="text/javascript" src="{{url_for('static', filename = 'js/dataset.explorer.js')}}" ></script>

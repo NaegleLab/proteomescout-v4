@@ -1,0 +1,208 @@
+{% extends 'proteomescout/base.html' %}
+{% block content %}
+<div id="announcement">
+    <p>Website currently under construction</p>
+</div>
+<script type='text/javascript'>
+    // existing JavaScript code
+</script>
+<style>
+#announcement {
+    background-color: #009CA9; /* Change this to your preferred color */
+    color: white; /* Change this to your preferred color */
+    text-align: center;
+    border: 1px solid black;
+    margin-bottom: 0px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 35px; /* Adjust this to change the height of the banner */
+}
+
+#announcement p {
+    margin: 0;
+}
+
+/* existing CSS code */
+</style>
+
+<script type='text/javascript'>
+    $(function() {
+        if(!document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1")){
+            $( "#iewarn" ).dialog({
+                height: 300,
+                modal: true
+            });
+        }
+        });
+</script>
+<style>
+#splash {
+    text-align:center;
+}
+
+#portal {
+    position:relative;
+}
+
+#portal .menusplash {
+    margin-left:auto;
+    margin-right:auto;
+    padding-top:20px;
+}
+
+#portal .menuitem {
+    -webkit-border-radius: 65px;
+    -moz-border-radius: 65px;
+    border-radius: 65px;
+    width:120px;
+    height:120px;
+    text-align:center;
+    background-color:#009CA9;
+    border: 5px solid #008B98;
+    position:absolute;
+    line-height: 120px;
+    cursor:pointer;
+    display:table;
+}
+
+#portal_description {
+    width:600px;
+    margin-left:auto;
+    margin-right:auto;
+    margin-top:2em;
+    border: 2px solid #008B98;
+    border-radius: 5px;
+    margin-bottom:1em;
+    padding: 1em;
+}
+
+#portal_description a {
+    text-decoration: none;
+    color: #008B98;
+}
+
+#portal_description a:hover {
+    text-decoration: underline;
+    color: #008B98;
+}
+
+#portal .inactive {
+    -webkit-border-radius: 65px;
+    -moz-border-radius: 65px;
+    border-radius: 65px;
+    width:120px;
+    height:120px;
+    text-align:center;
+    position:absolute;
+    line-height: 120px;
+	opacity:0.5; 
+	background-color:gray; 
+	border: solid 5px gray; 
+	cursor: default;
+    display:table;
+}
+
+#portal a:active, #portal a:visited, #portal a:hover, #portal a:link {
+    color:white;
+    font-size:medium;
+}
+
+#portal .menuitem:hover {
+    border: 5px solid #A3A510;
+}
+
+#portal .menuitem:active {
+    background-color: #A3A510;
+}
+
+#portal .menuitem span, #portal .inactive span {
+    display: table-cell;
+    line-height: normal;
+    vertical-align: middle;
+    color:white;
+    margin-top:40px;
+    
+}
+
+#wrapper {
+	/* min-height: 100%; */
+	/* height: auto !important; */
+	/* height: 100%; */
+	margin: 66px auto -160px; /* the bottom margin is the negative value of the footer's height */
+  width: 960px;
+  /* background-color: white; */
+  margin-left:auto;
+  margin-right:auto;
+  /* min-height: 100%; */
+  /* height: auto !important; */
+  /* height: 100%; */
+  /* border-left: 2px solid #666; */
+  /* border-right: 2px solid #666;   */
+}
+
+
+</style>
+
+    <div id="iewarn" title="Warning!" style="display: none;">
+        Warning! We have detected that your browser does not support Scalable Vector Graphics. We recommend viewing this site using the most recent versions of Chrome, Opera, or Firefox. We recommend Chrome for the best performance. Using Internet Explorer or any legacy browser will not allow you to use many graphical features of ProteomeScout.
+    </div>
+    <div id ="wrapper">
+     <div id="splash">
+        <div id="portal">
+        <div class="menusplash">
+            <img src="{{url_for('static', filename='images/proteomescout_splash.png')}}" style="margin-left:-85px" />
+        </div>
+
+        <a href="{{url_for('protein.search')}}" title="Visualize proteins or annotate your own proteins">
+            <div class="menuitem" style="top:0px; left:325px;">
+                <span>Search<br>Proteins</span>
+            </div>
+        </a>
+        <a href="{{url_for('upload.start')}}" title="Upload a PTM experiment for analysis or publication (e.g. HT-MassSpec data)">
+            <div class="menuitem" style="top:20px; right:325px;">
+                <span>Upload<br>Dataset</span>
+            </div>
+        </a>
+
+        <a href="{{url_for('experiment.landing')}}" title="Browse PTM experiments currently in the ProteomeScout repository">
+            <div class="menuitem" style="top:150px; left:230px;">
+                <span>Browse<br>Experiments</span>
+            </div>
+        </a>
+
+        <a href="{{url_for('experiment.landing')}}" title="Explore your own protein data, with protein residues of interest annotated with protein information from the ProteomeScout Database">
+            <div class="menuitem" style="top:150px; right:230px;">
+                <span>Annotate<br>Sites</span>
+            </div>
+        </a>
+     
+        <a href="${documentationUrl}">
+            <div class="menuitem" style="top:375px; left:350px;">
+                <span>Help</span>
+            </div>
+        </a>
+        <a href="{{url_for('kstar.landing')}}" title="KSTAR Plotting: A tool for plotting KSTAR results (Activities and FPR)">
+            <div class="menuitem" style="top:285px; right:600px;">
+                <span>KSTAR<br>Plotting</span>
+            </div>
+        </a>
+        <a href="${naegleUrl}">
+            <div class="menuitem" style="top:295px; right:275px;">
+                <span>The Naegle Lab</span>
+            </div>
+        </a>
+        </div> <!-- portal -->
+    </div> <!-- splash --> 
+    
+
+    <div id="portal_description" >
+        <p>ProteomeScout is a database of proteins and post-translational modifications. There are two main data types in ProteomeScout.</p>
+        <p>1) Proteins: Visualize proteins or annotate your own proteins.</p>
+        <p>2) Experiments: You can load a new experiment or browse and analyze an existing experiment.</p>
+        <p>3) KSTAR Plotting: A tool for plotting KSTAR results (Activities and FPR).</p>
+        <p>Getting Started: Try visualizing the protein <a href="{{ url_for('protein.structure', protein_id=52355) }}">EGFR</a> or exploring <a href="${request.route_url('experiment_summary', id=1386)}">this experiment</a>.
+    </div>
+</div>
+
+{% endblock %}

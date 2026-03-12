@@ -1,0 +1,13 @@
+{% extends "proteomescout/base.html" %}
+
+{% block content %}
+
+<form id="downloadForm" action="{{ url_for('experiment.download_result', filename=filename) }}" method="get">
+    <input type="hidden" name="filename" value="{{ filename }}">
+    <button type="submit">Download</button>
+</form>
+<div id="flashMessages"></div>
+
+<script src="{{ url_for('static', filename='js/download.result.js') }}"></script>
+
+{% endblock %}

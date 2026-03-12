@@ -1,0 +1,22 @@
+{% extends 'proteomescout/base.html' %}
+
+{% block title %} 
+    {{title}} 
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{{url_for('static', filename = 'css/error.css')}}" />
+{% endblock %}
+
+{% block content %}
+
+<div class = "container"></div>
+{% if current_user.is_authenticated %}
+    {% include 'proteomescout/accounts/account.html'%}
+{% else %}
+    {% include 'proteomescout/auth/forbidden.html'%}
+
+{% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'proteomescout/base.html' %}
+{% block content %}
+{% include 'proteomescout/proteins/protein_navbar.html'%}
+
+<div class = "container">
+    <h1>{{protein.name}}</h1>
+
+    <table class="table table-striped">
+            <thead class="thead-dark">
+            <tr>
+                <th>Site</th>
+                <th>Peptide</th>
+                <th>Modification</th>
+                <th>Experiment</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for mod_site in modification_sites %}
+            <tr> 
+
+                <td>{{ mod_site['name'] }}</td>
+                <td>{{ mod_site['peptide'] }}</td>
+                <td>{{ mod_site['type'] }}</td>
+                <td>
+                    {% for exp in mod_site['experiments']%}
+                        <div href = "{{exp.URL}}">{{exp.name}}</div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table> 
+
+</div>
+{% endblock %}

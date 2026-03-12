@@ -1,0 +1,40 @@
+{% extends 'proteomescout/base.html' %}
+{% block content %}
+{% include 'proteomescout/proteins/protein_navbar.html'%}
+<div class = "container">
+    <div class="row">
+        <div class="col-sm">
+            <h4>Molecular Functions</h4>
+            {% for go in F_terms%}
+                <div class = "row">
+                    <a class="col-sm" href="{{ 'http://amigo.geneontology.org/amigo/term/'+ go[0] }}">{{go[0]}}</a>
+
+                    <div class = "col-sm">{{go[1]}}</div>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="col-sm">
+            <h4>Cellular Components</h4>
+            {% for go in C_terms%}
+                <div class = "row">
+                    <a class="col-sm" href="{{ 'http://amigo.geneontology.org/amigo/term/'+ go[0] }}">{{go[0]}}</a>
+
+                    <div class = "col-sm">{{go[1]}}</div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="col-sm">
+            <h4>Biological Process</h4>
+            {% for go in P_terms%}
+                <div class = "row">
+                    <a class="col-sm" href="{{ 'http://amigo.geneontology.org/amigo/term/'+ go[0] }}">{{go[0]}}</a>
+
+                    <div class = "col-sm">{{go[1]}}</div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

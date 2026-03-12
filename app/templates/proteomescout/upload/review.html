@@ -1,0 +1,17 @@
+
+<h2>Line Mapping </h2>
+{% for num, line in line_mapping.items()%}
+    <div>{{line}}</div>
+{% endfor %}
+
+<h2>ProteomeScout Accessions</h2>
+{% for acc, pscouts in pscout_accessions.items()%}
+    <div>
+    {{acc}}
+    {% for ac in pscouts %}
+    <span>---{{ac}}---- </span>
+    {% endfor %}
+    </div>
+
+    </div>
+{% endfor %}

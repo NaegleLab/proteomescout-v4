@@ -1,0 +1,246 @@
+{% extends 'proteomescout/base.html' %}
+{% block content %}
+
+<script>
+
+    function updatePublished(){
+        
+        if( $("#published").val() == "yes"){
+          $("#published-info").show();
+          document.querySelector("#authors").required = true;
+          document.querySelector("#author-email").required = true;
+          document.querySelector("#journal").required = true;
+          document.querySelector("#volume").required = true;
+          document.querySelector("#pagestart").required = true;
+          document.querySelector("#pageend").required = true;
+
+        }
+        else{
+
+          document.querySelector("#authors").required = false;
+          document.querySelector("#author-email").required = false;
+          document.querySelector("#journal").required = false;
+          document.querySelector("#volume").required = false;
+          document.querySelector("#pagestart").required = false;
+          document.querySelector("#pageend").required = false;
+            $("#published-info").hide();
+        }
+    }
+
+    function populateMonths(month){
+      var monthSelect = document.querySelector('#month');
+      var publish_month = "January";
+      const  months= ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      const short_months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul","Aug", "Sep", "Oct", "Nov", "Dec"];
+      if(month && months.includes(month)){
+        publish_month = month;
+      }
+      if(month && short_months.includes(month)){
+        i = short_months.indexOf(month)
+        publish_month = months[i]
+      }
+      for(let i=0; i < months.length; i++){
+        var option = document.createElement("option");
+        option.textContent = months[i];
+        if(months[i] == publish_month){
+          option.selected = true;
+        }
+        monthSelect.appendChild(option);
+      }
+
+      var option = document.createElement("option");
+      option.textContent = month;
+      monthSelect.appendChild(option);
+    }
+
+  function populateYears(publish_year) {
+      // get the current year as a number
+      var yearSelect = document.querySelector('#year');
+      var date = new Date();
+      var year = date.getFullYear();
+      var year_published = year;
+
+      if( publish_year &&  Number.isInteger(publish_year)){
+        year_published = publish_year;
+      }
+
+      // Make this year, and the 100 years before it available in the year <select>
+      for(var i = 0; i <= 100; i++) {
+          var option = document.createElement('option');
+          option.textContent = year-i;
+          if( year - i == year_published){
+            option.selected = true;
+          }
+          yearSelect.appendChild(option);
+      }
+  }
+  $(document).ready( function (){
+
+      $("#published").change(function(){
+          updatePublished()
+      });
+      var data = document.querySelector("#data")
+      var year = parseInt(data.dataset.year);
+      var month = data.dataset.month;
+      populateYears(year)
+      populateMonths(month)
+      updatePublished()
+  });
+
+</script>
+
+
+<div id ="data" data-year = "{{field_dict['publication_year']}}" data-month = "{{field_dict['publication_month']}}"></div>
+<div class = "container">
+  {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-header">Upload Errors</div>
+                <div class="card-body">
+                    <ul class=flashes>
+                        {% for message in messages %}
+                        <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+<form method="POST">
+  <div class = "card">
+  <div class = "card-header">Experiment Information</div>
+  <div class = "card-body">
+  <div class="form-group row">
+    <label for="experiment_name" class="col-sm-2 col-form-label">Experiment Name</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" id="experiment_name" name = "experiment_name" value="{{field_dict['experiment_name']}}" required>
+    </div>
+  </div>
+
+  <div class="form-group row">
+    <label for="published" class="col-sm-2 col-form-label">Published</label>
+    <div class="col-sm-10">
+      <select id="published" name = "published">
+      {% if field_dict['published'] == 'yes'%}
+        <option value="no">No</option>
+        <option value="yes" selected>Yes</option>
+      {% else %}
+        <option value="no" selected>No</option>
+        <option value="yes" >Yes</option>
+      {% endif %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group row">
+    <label for="url" class="col-sm-2 col-form-label">URL (optional)</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" name="url" id="url" value = "{{field_dict['URL']}}">
+    </div>
+  </div>
+
+  <div class="form-group row">
+    <label for="description" class="col-sm-2 col-form-label">Description</label>
+    <div class="col-sm-10">
+      <textarea class="form-control" id="descriiption" name="description" rows=3 required>{{field_dict['description']}}</textarea>
+    </div>
+  </div>
+
+  <div class="published-info" id="published-info">
+    <div class="form-group row">
+        
+        <label for="pmid" class="col-sm-2 col-form-label">PubMed ID (optional)</label>
+        <div class="col-sm-4">
+            <input type="number" class="form-control" id="pmid" name="pmid" value = "{{field_dict['pmid']}}">
+        </div>
+        <button type="button" class="btn btn-primary" id="load-pubmed" name="load-pubmed">Load PubMed Citation</button>
+    
+    </div>
+
+    <div class="form-group row">
+        <label for="authors" class="col-sm-2 col-form-label">Authors</label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control" id="authors" name="authors" value = "{{field_dict['authors']}}">
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label for="author-email" class="col-sm-2 col-form-label">Author Contact Email</label>
+        <div class="col-sm-10">
+          <input type="email" class="form-control" id="author-email" name="author_email" value = "{{field_dict['author_contact']}}">
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="journal" class="col-sm-2 col-form-label">Journal</label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control" id="journal" name="journal" value = "{{field_dict['journal']}}">
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <div class="col-sm-2">Publication Date</div>
+        <div class="col-sm-10">
+            <span>
+              <label for="month">Month:</label>
+              <select id="month" name="publication_month">
+              </select>
+            </span>
+            <span>
+              <label for="year">Year:</label>
+              <select id="year" name="publication_year">
+              </select>
+            </span>
+          </div>
+        
+
+    </div>
+
+    <div class="form-group row">
+        <label for="volume" class="col-sm-2 col-form-label">Volume</label>
+        <div class="col-sm-10">
+          <input type="number" class="form-control" id="volume" name="volume" value = "{{field_dict['volume']}}">
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label for="pages" class="col-sm-2 col-form-label" name="pages">Pages</label>
+        <div>
+          <input type="number" class="form-control" id="pagestart" name="page_start" value = "{{field_dict['page_start']}}" >
+        </div>
+         &nbsp; - &nbsp; 
+        <div>
+            <input type="number" class="form-control" id="pageend" name="page_end" value = "{{field_dict['page_end']}}">
+        </div>
+    </div>
+
+  </div>
+</div>
+  <div class = "card-header">Experiment Data</div>
+  <div class = "card-body">
+  <div class="form-group row">
+    <label for="ambiguous" class="col-sm-6 col-form-label">Contains mass-spec data with possibly ambiguous accessions:</label>
+    <!-- <div class="col-sm-10"> -->
+      <select id="ambiguous">
+      {% if field_dict['ambiguous'] == 'yes'%}
+        <option value="no">No</option>
+        <option value="yes" selected>Yes</option>
+      {% else %}
+        <option value="no" selected>No</option>
+        <option value="yes" >Yes</option>
+      {% endif %}
+      </select>
+    <!-- </div> -->
+  </div>
+
+  
+</div><hr>
+<div clss = "card-body">
+  <button type="submit" class = "btn btn-primary" name="submit_button" value = "btn-continue">Continue</button>
+  <button type="cancel" class = "btn btn-danger" name="submit_button" value = "btn-cancel" formnovalidate>Cancel</button>
+
+</form>
+</div>
+</div>
+
+
+{% endblock %}

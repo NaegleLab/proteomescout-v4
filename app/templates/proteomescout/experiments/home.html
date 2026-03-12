@@ -1,0 +1,39 @@
+{% extends 'proteomescout/base.html' %}
+
+{% block title %}
+    {{title}}
+{% endblock %}
+
+{% block content %}
+{% include 'proteomescout/experiments/navbar.html'%}
+{% include 'proteomescout/experiments/info.html'%}
+
+<div class = "container">
+    <hr/>
+    <h3>Tools</h3>
+    <div class="body">
+            <dl>
+                <dt><a href="{{url_for('experiment.summary', experiment_id=experiment.id)}}">Experiment Summary</a></dt>
+                <dd>Tables and pie graphs of all annotations for the entire dataset</dd>
+    
+                <dt><a href="{{url_for('experiment.browse', experiment_id=experiment.id)}}">Browse Dataset</a></dt>
+                <dd>View sites and proteins in the experiment</dd>
+        
+                <dt><a class="longtask" href="{{url_for('experiment.subset', experiment_id=experiment.id)}}">Evaluate Subsets</a></dt>
+                <dd>Select a foreground from data or metadata, view composition and evaluate enrichment</dd>
+                {% if experiment.type == 'experiment' and experiment.ambiguity == 1 %}
+                    <dt><a href="#">Report Ambiguity</a></dt>
+                    <dd>See all peptide assignments that might be ambiguously assigned.  Explore and change assignments</dd>
+                {% endif %}
+
+                <dt><a href="{{url_for('experiment.download_experiment', experiment_id=experiment.id)}}">Download Experiment</a></dt>
+                <dd>Download annotated experiment data</dd>
+
+                        
+            </dl>
+    	    </div>
+    	  </div>
+
+</div>
+
+{% endblock %}

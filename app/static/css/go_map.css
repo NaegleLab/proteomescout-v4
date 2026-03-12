@@ -1,0 +1,82 @@
+ .node {
+    cursor: pointer;
+}
+
+.node:hover {
+    stroke: rgb(189, 189, 189);
+    stroke-width: 1.5px;
+}
+
+.node--leaf {
+    fill: white;
+}
+
+.label {
+    font: 15px "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-anchor: middle;
+    
+    padding:8px;
+    background-color:grey;
+} 
+
+
+/* div.tooltip {
+    color: white;
+    position: absolute;
+    text-align: center;
+    width: 60px;
+    height: 28px;
+    padding: 2px;
+    font: 12px sans-serif;
+    background: rgba(0,0,0,.8);
+    border: 2px solid black;
+    pointer-events: none;
+  } */
+
+
+
+
+.d3-tip {
+    position: relative;
+    /* display: inline-block; */
+    background: rgba(224, 240, 255, 0.8);
+    border-radius: 5px;
+    padding: 2px;
+    border: 2px solid black;
+    /* border-bottom: 1px dotted black; */
+  }
+/*
+  
+  .tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+  
+
+    position: absolute;
+    z-index: 1;
+  }
+  
+  .tooltip:hover .tooltiptext {
+    visibility: visible;
+  } */
+
+
+/* 
+.label,
+.node--root,
+.node--leaf {
+    pointer-events: fill;
+}
+
+.meter-background {
+    fill: rgb(255, 255, 255);
+}
+
+.meter-foreground {
+    fill: rgb(67, 136, 255);
+} */

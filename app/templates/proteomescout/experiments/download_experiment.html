@@ -1,0 +1,37 @@
+{% extends "proteomescout/base.html" %}
+
+{% block content %}
+<div style="padding: 20px;">
+    <h2>Experiment Download Request</h2>
+
+    {% if not current_user.is_authenticated %}
+    <p>You must login to use this resource. <a class="nav-link" href="{{url_for('auth.login')}}" style="border: 1px solid; padding: 5px; display: inline-block;">Log in</a></p>
+    {% endif %}
+    <form id="downloadForm" action="" method="post" style="margin: 20px;">
+        {{ form.hidden_tag() }}
+        
+        <p>
+            {{ form.annotate.label }}<br>
+            {{ form.annotate() }}<br>
+            {% for error in form.annotate.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>{{ form.submit() }}</p>
+    </form>
+
+    <!-- Flash messages at the bottom of the form -->
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div id="flashMessages">
+          <ul class="flashes">
+            {% for message in messages %}
+              <li>{{ message }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+    {% endwith %}
+
+{% endblock %}
+

@@ -1,0 +1,40 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-secondary">
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" href="{{url_for('experiment.home', experiment_id=experiment.id)}}">Experiment Home</a>
+      </li>
+
+      <li class="nav-item dropdown active">
+        <a class="nav-link dropdown-toggle"  id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Summary
+        </a>
+        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <a class="dropdown-item" href="{{url_for('experiment.summary', experiment_id=experiment.id)}}">Data Summary</a>
+          <a class="dropdown-item" href="{{url_for('experiment.go_terms', experiment_id=experiment.id)}}">Go Terms</a>
+          <a class="dropdown-item" href="{{url_for('experiment.protein_families', experiment_id=experiment.id)}}">Protein Families</a>
+          <a class="dropdown-item" href="{{url_for('experiment.scansite_predictions', experiment_id=experiment.id)}}">Scansite Predictions</a>
+        </div>
+      </li>
+
+      <li class="nav-item active">
+        <a class="nav-link" href="{{url_for('experiment.browse', experiment_id=experiment.id)}}">Browse</a>
+      </li>
+
+      <li class="nav-item active">
+        <a class="nav-link" href="{{url_for('experiment.home', experiment_id=experiment.id)}}">Evaluate</a>
+      </li>
+      {% if experiment.type == 'experiment' and experiment.ambiguity == 1 %}
+        <li class="nav-item active">
+          <a class="nav-link" href="{{url_for('experiment.home', experiment_id=experiment.id)}}">Ambiguity</a>
+        </li>
+      {% endif %}
+      
+    </ul>
+
+    
+
+  </div>
+</nav>
+<h4>{{experiment.name}}</h4>
+<hr//>
