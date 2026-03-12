@@ -561,13 +561,6 @@ $(function(){
             window.structure_viewer.toggle_ptm(ptm, mode);
         });
 
-    $('.exps input.exptoggle').change(
-        function(){
-            mode = $(this).is(':checked');
-            exp = $(this).attr('id').substring(1);
-            window.structure_viewer.toggle_exp( parseInt(exp), mode );
-        });
-
     // ptm modal select all
     $('.mods button.all').click(
         function(){
@@ -580,23 +573,6 @@ $(function(){
     $('.mods button.none').click(
         function(){
             $(".mods input.modtoggle").each(
-                function(){
-                    if($(this).is(':checked')) $(this).click();
-                });
-        });
-
-    // experiment modal select all
-    $('.exps button.all').click(
-        function(){
-            $(".exps input.exptoggle").each(
-                function(){
-                    if(! $(this).is(':checked')) $(this).click();
-                });
-        });
-    // experiment modal hide all
-    $('.exps button.none').click(
-        function(){
-            $(".exps input.exptoggle").each(
                 function(){
                     if($(this).is(':checked')) $(this).click();
                 });
@@ -626,13 +602,5 @@ $(function(){
         json_data = JSON.parse( data.dataset.structure );
 
         window.structure_viewer = new StructureViewer( json_data );
-        if(json_data.experiment != null && json_data.experiment != undefined){
-            $('.exps input.exptoggle').each(
-                function(){
-                    exp = parseInt($(this).attr('id').substring(1));
-                    if(exp != json_data.experiment)
-                        $(this).click();
-                });
-        }
     });
 });

@@ -9,15 +9,92 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/protein_viewer.css') }}">
   <style>
     body { background: #f5f7fa; }
-    .page-shell { max-width: 1280px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    .page-shell { max-width: 1280px; margin: 0 auto; padding: 1.5rem 5.5rem 3rem 1rem; }
     .viewer-header { display: flex; justify-content: space-between; gap: 1rem; align-items: start; margin-bottom: 1rem; }
-    .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .control-card { background: #fff; border: 1px solid #d8e0e8; border-radius: 0.75rem; padding: 1rem; }
-    .control-card h2 { font-size: 1rem; margin-bottom: 0.75rem; }
-    .control-card .form-check { margin-bottom: 0.5rem; }
+    .control-grid {
+      position: fixed;
+      right: 0.75rem;
+      top: 6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      z-index: 50;
+    }
+    .control-card {
+      background: #fff;
+      border: 1px solid #d8e0e8;
+      border-radius: 0.75rem;
+      width: 52px;
+      min-height: 176px;
+      overflow: hidden;
+      transition: width 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 1px 1px rgba(19, 33, 68, 0.03);
+    }
+    .control-card:hover {
+      width: 286px;
+      box-shadow: 0 8px 18px rgba(19, 33, 68, 0.12);
+    }
+    .control-card h2 {
+      font-size: 0.9rem;
+      margin: 0;
+      padding: 0.7rem 0.5rem;
+      background: #f8fafc;
+      border-bottom: none;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      min-height: 176px;
+      text-align: center;
+      letter-spacing: 0.02em;
+      user-select: none;
+    }
+    .control-card .filter-content {
+      display: none;
+      padding: 0.75rem 0.85rem 0.85rem;
+      max-height: 290px;
+      overflow-y: auto;
+    }
+    .control-card:hover h2 {
+      writing-mode: horizontal-tb;
+      transform: none;
+      min-height: auto;
+      text-align: left;
+      border-bottom: 1px solid #e8edf3;
+      padding: 0.65rem 0.85rem;
+    }
+    .control-card:hover .filter-content {
+      display: block;
+    }
+    .control-card .form-check { margin-bottom: 0.45rem; }
     .viewer-stage { background: #fff; border: 1px solid #d8e0e8; border-radius: 0.75rem; padding: 1rem; }
     .protein-meta { color: #5c6b7a; }
     .protein-meta .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    @media (max-width: 992px) {
+      .page-shell { padding-right: 1rem; }
+      .control-grid {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+      }
+      .control-card {
+        width: 220px;
+        min-height: 44px;
+      }
+      .control-card h2 {
+        writing-mode: horizontal-tb;
+        transform: none;
+        min-height: auto;
+        border-bottom: 1px solid #e8edf3;
+        padding: 0.65rem 0.85rem;
+      }
+      .control-card .filter-content {
+        display: block;
+      }
+      .control-card:hover {
+        width: 220px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -46,6 +123,7 @@
     <section class="control-grid">
       <div class="control-card mods">
         <h2>PTM Filters</h2>
+        <div class="filter-content">
         {% for mod_type in mod_types %}
         <div class="form-check">
           <input class="form-check-input modtoggle" type="checkbox" id="{{ mod_type|replace(' ','_') }}" checked>
@@ -56,24 +134,12 @@
           <button class="btn btn-sm btn-outline-secondary all" type="button">Show all</button>
           <button class="btn btn-sm btn-outline-secondary none" type="button">Hide all</button>
         </div>
-      </div>
-
-      <div class="control-card exps">
-        <h2>Experiments</h2>
-        {% for exp_id, exp_name in experiments.items() %}
-        <div class="form-check">
-          <input class="form-check-input exptoggle" type="checkbox" id="e{{ exp_id }}" checked>
-          <label class="form-check-label" for="e{{ exp_id }}">{{ exp_name }}</label>
-        </div>
-        {% endfor %}
-        <div class="d-flex gap-2 mt-2">
-          <button class="btn btn-sm btn-outline-secondary all" type="button">Show all</button>
-          <button class="btn btn-sm btn-outline-secondary none" type="button">Hide all</button>
         </div>
       </div>
 
       <div class="control-card tracks">
         <h2>Tracks</h2>
+        <div class="filter-content">
         {% for track in tracks %}
         <div class="form-check">
           <input class="form-check-input tracktoggle" type="checkbox" id="{{ track }}" checked>
@@ -83,6 +149,7 @@
         <div class="d-flex gap-2 mt-2">
           <button class="btn btn-sm btn-outline-secondary all" type="button">Show all</button>
           <button class="btn btn-sm btn-outline-secondary none" type="button">Hide all</button>
+        </div>
         </div>
       </div>
     </section>
