@@ -228,6 +228,13 @@ def _normalize(value):
     return str(value or '').strip().lower()
 
 
+def _ptm_record_count(protein):
+    mod_text = str(protein.get('modifications', '') or '').strip()
+    if not mod_text:
+        return 0
+    return sum(1 for entry in mod_text.split(';') if entry.strip())
+
+
 def _protein_matches(protein, query, peptide, species):
     if species and _normalize(protein.get('species')) != species:
         return None
@@ -277,7 +284,9 @@ def search_proteins(query='', peptide='', species='', limit=None):
     for protein in load_protein_data().values():
         ranking = _protein_matches(protein, normalized_query, normalized_peptide, normalized_species)
         if ranking is not None:
-            matches.append((ranking, protein))
+            matches.append((ranking, _ptm_record_count(protein), protein))
 
-    matches.sort(key=lambda item: item[0])
-    return [protein for _, protein in matches[:max_results]]
+    # Primary sort: PTM record volume (descending).
+    # Secondary sort: existing query relevance ranking (exact/prefix/name/id).
+    matches.sort(key=lambda item: (-item[1], item[0]))
+    return [protein for _, __, protein in matches[:max_results]]
