@@ -215,11 +215,10 @@ def structure(protein_id):
     formatted_experiments, formatted_mod_types, formatted_mods = format_protein_modifications(protein)
     protein_name = protein.get('protein_name') or protein.get('acc_gene') or protein_id
     template_protein = {
-        'id': str(protein.get('protein_id', protein_id)),
-        'name': protein_name,
-        'gene': protein.get('acc_gene', ''),
+        'protein_name': protein_name,
+        'acc_gene': protein.get('acc_gene', ''),
+        'uniprot_id': protein.get('uniprot_id', ''),
         'species': protein.get('species', ''),
-        'accessions': parse_accessions(protein.get('accessions', '')),
     }
 
     viewer_data = {

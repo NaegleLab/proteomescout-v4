@@ -416,24 +416,37 @@ StructureViewer.prototype.zoom_off = function(){
 }
 
 StructureViewer.prototype.export_svg = function() {
-   var chart = d3.select('.protein_viewer .viewer')
-   var id = "#" + chart.attr('id');
+    var sourceSvg = document.querySelector('.protein_viewer .viewer svg');
+    if (!sourceSvg) {
+        alert('No viewer SVG found to export.');
+        return;
+    }
 
-   if($(id + " svg style").size() == 0){
-       css_url = $("#protein_viewer_css_export_url").text()
+    var exportedSvg = sourceSvg.cloneNode(true);
+    exportedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    exportedSvg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
-       $.get(css_url,
-           function(data) {
-               $(id + " svg").append("<style>" + data + "</style>");
-               displaySVG(id);
-           }
-       ).error(function() {
-           alert("Request ERROR: unable to load stylesheet. Please try again.")
-       });
+    if (!exportedSvg.getAttribute('width')) {
+        exportedSvg.setAttribute('width', sourceSvg.clientWidth || 900);
+    }
+    if (!exportedSvg.getAttribute('height')) {
+        exportedSvg.setAttribute('height', sourceSvg.clientHeight || 400);
+    }
 
-   } else {
-       displaySVG(id);
-   }
+    var serialized = new XMLSerializer().serializeToString(exportedSvg);
+    if (!serialized.startsWith('<?xml')) {
+        serialized = '<?xml version="1.0" standalone="no"?>\n' + serialized;
+    }
+
+    var blob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'protein-viewer.svg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 };
 
 StructureViewer.prototype.zoom_on = function() {

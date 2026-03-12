@@ -107,16 +107,24 @@
           <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kstar.landing') }}">Open KSTAR</a>
           <a class="btn btn-sm btn-outline-secondary" href="{{ viewer_help_url }}" target="_blank" rel="noreferrer">Viewer help</a>
         </div>
-        <h1 class="h3 mb-1">{{ protein.name }}</h1>
+        <h1 class="h3 mb-1">{{ protein.protein_name }}</h1>
         <div class="protein-meta">
-          <span class="mono">ID {{ protein.id }}</span>
-          {% if protein.gene %}<span> · Gene {{ protein.gene }}</span>{% endif %}
-          {% if protein.species %}<span> · {{ protein.species }}</span>{% endif %}
-          {% if protein.accessions %}<span> · Accessions {{ protein.accessions | join(', ') }}</span>{% endif %}
+          {% if protein.uniprot_id %}
+          <span>
+            UniProt:
+            <a class="mono" href="https://www.uniprot.org/uniprotkb/{{ protein.uniprot_id }}/entry" target="_blank" rel="noreferrer">
+              {{ protein.uniprot_id }}
+            </a>
+          </span>
+          {% endif %}
+          {% if protein.acc_gene %}<span> · Gene: {{ protein.acc_gene }}</span>{% endif %}
+          {% if protein.protein_name %}<span> · Protein: {{ protein.protein_name }}</span>{% endif %}
+          {% if protein.species %}<span> · Species: {{ protein.species }}</span>{% endif %}
         </div>
       </div>
       <div>
         <button class="btn btn-primary zoomout-tool" type="button">Reset zoom</button>
+        <button class="btn btn-outline-primary svg-tool" type="button">Export SVG</button>
       </div>
     </header>
 
