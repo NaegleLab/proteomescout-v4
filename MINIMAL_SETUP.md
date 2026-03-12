@@ -1,6 +1,7 @@
 # Minimal App Setup
 
 This setup is for the read-only flat-file app in `run_minimal.py`.
+It is the primary runtime for this repository.
 
 ## Recommended: conda only
 
