@@ -77,26 +77,35 @@
       margin-bottom: 1rem;
     }
     .hero img {
+      width: min(74%, 560px);
       max-width: 100%;
-      width: 520px;
       height: auto;
     }
     .portal-wrap {
       position: relative;
-      max-width: 760px;
+      width: min(92vw, 760px);
       margin: 0 auto 0.8rem;
-      min-height: 460px;
+      aspect-ratio: 1 / 1;
+      min-height: 360px;
+    }
+    .hero {
+      position: absolute;
+      inset: 0;
+      margin: 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      pointer-events: none;
+      z-index: 1;
     }
     .menu-circles {
       position: absolute;
       inset: 0;
+      z-index: 2;
     }
     .menu-circle {
-      width: 132px;
-      height: 132px;
+      width: clamp(92px, 13.5vw, 132px);
+      height: clamp(92px, 13.5vw, 132px);
       border-radius: 999px;
       border: 5px solid var(--teal-dark);
       background: var(--teal);
@@ -112,20 +121,27 @@
       box-shadow: 0 8px 18px rgba(16, 68, 78, 0.22);
       transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
       position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: clamp(0.82rem, 1.55vw, 1rem);
     }
-    .menu-circle.search { left: 108px; top: 110px; }
-    .menu-circle.kstar { right: 108px; top: 110px; }
-    .menu-circle.api { left: 172px; bottom: 132px; }
-    .menu-circle.kstar-galaxy { right: 82px; bottom: 162px; }
-    .menu-circle.help { left: 50%; top: 14px; transform: translateX(-50%); }
+    .menu-circle.search { left: 30.95%; top: 39%; }
+    .menu-circle.kstar { left: 69.05%; top: 39%; }
+    .menu-circle.api { left: 30.95%; top: 61%; }
+    .menu-circle.kstar-galaxy { left: 69.05%; top: 61%; }
+    .menu-circle.help { left: 50%; top: 28%; }
     .menu-circle:hover {
-      transform: translateY(-2px);
+      transform: translate(-50%, -50%) translateY(-2px);
       border-color: #93a01b;
       background-color: #a3a510;
       color: #fff;
     }
-    .menu-circle.help:hover {
-      transform: translateX(-50%) translateY(-2px);
+    .hero img {
+      width: clamp(270px, 52%, 430px);
+      max-width: 72%;
+      height: auto;
+      transform: translateX(-6%);
     }
     .desc {
       background: #fff;
@@ -140,7 +156,18 @@
     @media (max-width: 900px) {
       .portal-wrap {
         min-height: 0;
+        aspect-ratio: auto;
         display: block;
+      }
+      .hero {
+        position: static;
+        display: block;
+        pointer-events: auto;
+      }
+      .hero img {
+        max-width: min(92vw, 500px);
+        width: 100%;
+        transform: none;
       }
       .menu-circles {
         position: static;
