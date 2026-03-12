@@ -8,7 +8,61 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/proteins.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/protein_viewer.css') }}">
   <style>
-    body { background: #f5f7fa; }
+    :root {
+      --teal: #009ca9;
+      --teal-dark: #007f89;
+      --ink: #1f2a36;
+    }
+    body { background: #f5f7fa; color: var(--ink); }
+    .top-nav {
+      background: #ffffff;
+      border-bottom: 2px solid #d8e8ec;
+      box-shadow: 0 2px 8px rgba(22, 50, 70, 0.05);
+    }
+    .top-nav .inner,
+    .app-nav .inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0.15rem 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+    }
+    .brand img {
+      width: 108px;
+      height: 108px;
+      object-fit: contain;
+    }
+    .nav-links,
+    .app-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      flex-wrap: wrap;
+    }
+    .nav-pill,
+    .app-pill {
+      border: 1px solid #cfe4e8;
+      color: #1e3e4c;
+      text-decoration: none;
+      background: #f8fcfd;
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.97rem;
+      font-weight: 600;
+      line-height: 1.1;
+    }
+    .nav-pill:hover,
+    .app-pill:hover {
+      border-color: var(--teal);
+      color: var(--teal-dark);
+      background: #eef8fa;
+    }
+    .app-nav {
+      background: linear-gradient(180deg, #ffffff 0%, #f7fbfc 100%);
+      border-bottom: 1px solid #d8e8ec;
+    }
     .page-shell { max-width: 1280px; margin: 0 auto; padding: 1.5rem 5.5rem 3rem 1rem; }
     .viewer-header { display: flex; justify-content: space-between; gap: 1rem; align-items: start; margin-bottom: 1rem; }
     .control-grid {
@@ -70,6 +124,14 @@
     .protein-meta .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
     @media (max-width: 992px) {
+      .top-nav .inner,
+      .app-nav .inner {
+        display: block;
+      }
+      .nav-links,
+      .app-links {
+        margin-top: 0.5rem;
+      }
       .page-shell { padding-right: 1rem; }
       .control-grid {
         position: static;
@@ -99,14 +161,12 @@
 </head>
 <body>
   <div id="structure_data" class="data" data-structure="{{ data | e }}"></div>
+  {% include 'includes/site_header.html' %}
   <main class="page-shell">
     <header class="viewer-header">
       <div>
         <div class="mb-2">
-          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('index') }}">Home</a>
           <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('proteins.search') }}">Back to search</a>
-          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kstar.landing') }}">Open KSTAR</a>
-          <a class="btn btn-sm btn-outline-secondary" href="{{ viewer_help_url }}" target="_blank" rel="noreferrer">Viewer help</a>
         </div>
         <h1 class="h3 mb-1">{{ protein.protein_name }}</h1>
         <div class="protein-meta">
