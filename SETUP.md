@@ -1,6 +1,6 @@
-# Minimal App Setup
+# App Setup
 
-This setup is for the read-only flat-file app in `run_minimal.py`.
+This setup is for the read-only TSV-backed app in `run.py`.
 It is the primary runtime for this repository.
 
 ## Recommended: conda only
@@ -9,9 +9,9 @@ This is the simplest option on macOS ARM because `numpy`, `scipy`, and `matplotl
 
 ```bash
 cd /Users/kmn4mj/GIT/public/proteomescout-v4
-conda env create -f environment-minimal.yml
-conda activate pscout-minimal
-python run_minimal.py
+conda env create -f environment.yml
+conda activate pscout
+python run.py
 ```
 
 Then open:
@@ -25,30 +25,30 @@ If your TSV files are not in the default location, run with:
 ```bash
 PROTEIN_DATA_TSV_PATH=/Users/kmn4mj/GIT/Data/proteomescout_20260115/data.tsv \
 CITATIONS_TSV_PATH=/Users/kmn4mj/GIT/Data/proteomescout_20260115/citations.tsv \
-python run_minimal.py
+python run.py
 ```
 
 ## Optional: local `.venv` inside conda
 
 Only do this if you specifically want a workspace-local interpreter path for VS Code.
-It is not required for the minimal app.
+It is not required for normal usage.
 
 ```bash
 cd /Users/kmn4mj/GIT/public/proteomescout-v4
-conda create -n pscout-minimal-base -c conda-forge python=3.11 pip
-conda activate pscout-minimal-base
+conda create -n pscout-base -c conda-forge python=3.11 pip
+conda activate pscout-base
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements-minimal.txt
+pip install -r requirements.txt
 pip install debugpy
-python run_minimal.py
+python run.py
 ```
 
 ## VS Code
 
-Use the `Python: Minimal Flatfile App` debug profile.
+Use the `Python: ProteomeScout App` debug profile.
 
-If you use conda only, select the `pscout-minimal` interpreter in VS Code.
+If you use conda only, select the `pscout` interpreter in VS Code.
 
 If you use `.venv`, select:
 

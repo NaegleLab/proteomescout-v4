@@ -1,4 +1,4 @@
-name: pscout-minimal
+name: pscout
 channels:
   - conda-forge
 dependencies:

@@ -2,7 +2,7 @@ import json
 
 from flask import Blueprint, abort, current_app, render_template, request, url_for
 
-from flatfile_app.protein_data import (
+from proteomescout_app.protein_data import (
     get_citation_by_id,
     get_protein_by_id,
     get_species_options,

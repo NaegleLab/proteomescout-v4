@@ -29,16 +29,16 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 import os
 
-from flatfile_app.kstar.plotting import create_integrated_plot, create_dot_plot
-from flatfile_app.kstar.clustering import handle_clustering_for_plot
-from flatfile_app.kstar.data_processing import (
+from proteomescout_app.kstar.plotting import create_integrated_plot, create_dot_plot
+from proteomescout_app.kstar.clustering import handle_clustering_for_plot
+from proteomescout_app.kstar.data_processing import (
     process_activities_data,
     filter_significant_kinases,
     handle_kinase_filtering,
     handle_sample_filtering,
     validate_dataframe_compatibility
 )
-from flatfile_app.kstar.utils import (
+from proteomescout_app.kstar.utils import (
     parse_bool,
     get_sep,
     parse_form_data,

@@ -2,16 +2,16 @@ import os
 
 from flask import Flask, abort, render_template, send_file, url_for
 
-from flatfile_app.config import Config
-from flatfile_app.protein_data import get_species_ptm_statistics
+from proteomescout_app.config import Config
+from proteomescout_app.protein_data import get_species_ptm_statistics
 
 
 def create_app(config_class=Config):
     app = Flask(__name__, static_folder='static', template_folder='templates')
     app.config.from_object(config_class)
 
-    from flatfile_app.proteins import bp as proteins_bp
-    from flatfile_app.kstar import bp as kstar_bp
+    from proteomescout_app.proteins import bp as proteins_bp
+    from proteomescout_app.kstar import bp as kstar_bp
 
     app.register_blueprint(proteins_bp)
     app.register_blueprint(kstar_bp)
@@ -40,7 +40,7 @@ def create_app(config_class=Config):
     def downloads():
         files = []
         for key, label, description in (
-            ('PROTEIN_DATA_TSV_PATH', 'Protein data TSV', 'Primary flat-file protein/PTM dataset.'),
+            ('PROTEIN_DATA_TSV_PATH', 'Protein data TSV', 'Primary TSV-backed protein/PTM dataset.'),
             ('CITATIONS_TSV_PATH', 'Citation TSV', 'Evidence and citation records linked from PTM entries.'),
         ):
             file_path = app.config.get(key)

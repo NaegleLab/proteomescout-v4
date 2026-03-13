@@ -24,18 +24,18 @@ import logging
 import matplotlib.pyplot as plt
 from io import BytesIO
 
-from flatfile_app.kstar import bp
-from flatfile_app.kstar.utils import parse_bool, safe_json_loads, create_error_response, parse_comma_separated_list
-from flatfile_app.kstar.plotting import create_integrated_plot, create_dot_plot
-from flatfile_app.kstar.clustering import handle_clustering_for_plot
-from flatfile_app.kstar.data_processing import (
+from proteomescout_app.kstar import bp
+from proteomescout_app.kstar.utils import parse_bool, safe_json_loads, create_error_response, parse_comma_separated_list
+from proteomescout_app.kstar.plotting import create_integrated_plot, create_dot_plot
+from proteomescout_app.kstar.clustering import handle_clustering_for_plot
+from proteomescout_app.kstar.data_processing import (
     process_activities_data,
     filter_significant_kinases,
     handle_kinase_filtering,
     handle_sample_filtering
 )
 
-from flatfile_app.kstar.modules import (
+from proteomescout_app.kstar.modules import (
     read_csv_file,
     extract_plot_params,
     extract_plot_settings,

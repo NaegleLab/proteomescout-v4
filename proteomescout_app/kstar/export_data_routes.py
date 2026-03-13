@@ -19,9 +19,9 @@ from io import BytesIO
 import zipfile
 import json
 
-from flatfile_app.kstar import bp
-from flatfile_app.kstar.utils import create_error_response
-from flatfile_app.kstar.modules import validate_plot_parameters
+from proteomescout_app.kstar import bp
+from proteomescout_app.kstar.utils import create_error_response
+from proteomescout_app.kstar.modules import validate_plot_parameters
 
 logger = logging.getLogger(__name__)
 

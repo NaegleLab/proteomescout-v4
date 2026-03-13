@@ -13,9 +13,9 @@ from flask import request, jsonify
 import pandas as pd
 import logging
 
-from flatfile_app.kstar import bp
-from flatfile_app.kstar.utils import create_error_response
-from flatfile_app.kstar.modules import read_csv_file, validate_files, validate_dataframe_compatibility
+from proteomescout_app.kstar import bp
+from proteomescout_app.kstar.utils import create_error_response
+from proteomescout_app.kstar.modules import read_csv_file, validate_files, validate_dataframe_compatibility
 
 logger = logging.getLogger(__name__)
 

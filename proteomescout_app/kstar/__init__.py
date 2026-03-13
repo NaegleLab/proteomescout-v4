@@ -9,4 +9,4 @@ def landing():
     return render_template('kstar/landing.html')
 
 
-from flatfile_app.kstar import data_routes, export_data_routes, plot_routes  # noqa: E402,F401
+from proteomescout_app.kstar import data_routes, export_data_routes, plot_routes  # noqa: E402,F401
