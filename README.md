@@ -2,6 +2,11 @@
 
 This repository runs the read-only TSV-backed ProteomeScout app.
 
+## Python Version
+
+Use Python 3.11.x for local and production environments.
+Pin to a 3.11 patch release and avoid automatic minor upgrades (for example, 3.12+) without validation.
+
 ## Run
 
 ```bash

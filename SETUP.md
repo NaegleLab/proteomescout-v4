@@ -3,6 +3,11 @@
 This setup is for the read-only TSV-backed app in `run.py`.
 It is the primary runtime for this repository.
 
+## Python Version
+
+Use Python 3.11.x for development and production deployment.
+Prefer patch-level updates within 3.11 and validate before moving to a newer minor version.
+
 ## Recommended: conda only
 
 This is the simplest option on macOS ARM because `numpy`, `scipy`, and `matplotlib` install cleanly from `conda-forge`.
