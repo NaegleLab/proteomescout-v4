@@ -23,6 +23,7 @@ http://127.0.0.1:5000/
 ```
 
 ## Data File Overrides
+Current location of ProteomeScout Database Files:  [Jan 2026 ProteomeScout on Figshare](https://doi.org/10.6084/m9.figshare.31129045.v1)
 
 ```bash
 PROTEIN_DATA_TSV_PATH=/absolute/path/to/data.tsv \
