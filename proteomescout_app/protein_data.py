@@ -293,7 +293,7 @@ def search_proteins(query='', peptide='', species='', limit=None):
     return [protein for _, __, protein in matches[:max_results]]
 
 
-def get_species_ptm_statistics():
+def _collect_species_ptm_totals():
     species_totals = defaultdict(
         lambda: {
             'protein_count': 0,
@@ -312,6 +312,12 @@ def get_species_ptm_statistics():
             bucket['ptm_count'] += 1
             bucket['ptm_type_counts'][ptm_type] += 1
 
+    return species_totals
+
+
+def get_species_ptm_statistics():
+    species_totals = _collect_species_ptm_totals()
+
     rows = []
     for species_name, totals in species_totals.items():
         ordered_types = sorted(
@@ -329,4 +335,29 @@ def get_species_ptm_statistics():
         )
 
     rows.sort(key=lambda item: (-item['protein_count'], item['species'].lower()))
+    return rows
+
+
+def get_species_ptm_breakdown_rows(species=None):
+    species_totals = _collect_species_ptm_totals()
+    normalized_species = str(species or '').strip().lower()
+
+    rows = []
+    for species_name, totals in species_totals.items():
+        if normalized_species and species_name.strip().lower() != normalized_species:
+            continue
+        for ptm_type, ptm_count in totals['ptm_type_counts'].items():
+            rows.append(
+                {
+                    'species': species_name,
+                    'ptm_type': ptm_type,
+                    'ptm_count': ptm_count,
+                    'species_total_ptms': totals['ptm_count'],
+                    'species_protein_count': totals['protein_count'],
+                }
+            )
+
+    rows.sort(
+        key=lambda item: (-item['ptm_count'], item['species'].lower(), item['ptm_type'].lower())
+    )
     return rows

@@ -1,9 +1,15 @@
 import os
+import re
+from csv import DictWriter
+from io import StringIO
 
-from flask import Flask, abort, render_template, send_file, url_for
+from flask import Flask, Response, abort, render_template, request, send_file, url_for
 
 from proteomescout_app.config import Config
-from proteomescout_app.protein_data import get_species_ptm_statistics
+from proteomescout_app.protein_data import get_species_ptm_breakdown_rows, get_species_ptm_statistics
+
+
+FILENAME_SANITIZE_RE = re.compile(r'[^A-Za-z0-9._-]+')
 
 
 def create_app(config_class=Config):
@@ -170,5 +176,43 @@ def create_app(config_class=Config):
             load_error = str(exc)
 
         return render_template('statistics.html', species_stats=species_stats, load_error=load_error)
+
+    @app.route('/statistics/ptm-breakdown.csv')
+    def statistics_ptm_breakdown_csv():
+        species = str(request.args.get('species', '') or '').strip()
+        try:
+            rows = get_species_ptm_breakdown_rows(species=species or None)
+        except Exception as exc:
+            return Response(
+                f'Unable to generate PTM breakdown CSV: {exc}\n',
+                mimetype='text/plain',
+                status=503,
+            )
+
+        output = StringIO()
+        fieldnames = [
+            'species',
+            'ptm_type',
+            'ptm_count',
+            'species_total_ptms',
+            'species_protein_count',
+        ]
+        writer = DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+        if species:
+            safe_species = FILENAME_SANITIZE_RE.sub('_', species).strip('_') or 'species'
+            filename = f'proteomescout_ptm_breakdown_{safe_species}.csv'
+        else:
+            filename = 'proteomescout_ptm_breakdown.csv'
+
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename={filename}'
+            },
+        )
 
     return app

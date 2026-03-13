@@ -109,6 +109,32 @@
       color: #8f2f27;
       font-weight: 600;
     }
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #cde6ea;
+      color: #295363;
+      text-decoration: none;
+      background: #ffffff;
+      border-radius: 999px;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      line-height: 1.15;
+    }
+    .download-link:hover {
+      border-color: var(--teal);
+      color: var(--teal-dark);
+      background: #eef8fa;
+    }
     .species-title {
       margin: 0;
       font-size: 1.05rem;
@@ -117,6 +143,13 @@
       margin: 0.2rem 0 0;
       color: #536673;
       font-size: 0.92rem;
+    }
+    .species-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.8rem;
+      flex-wrap: wrap;
     }
     .chart-wrap {
       margin-top: 0.75rem;
@@ -135,7 +168,10 @@
 
   <main class="shell">
     <section class="card-block">
-      <h1>Statistics</h1>
+      <div class="header-row">
+        <h1 class="mb-0">Statistics</h1>
+        <a class="download-link" href="{{ url_for('statistics_ptm_breakdown_csv') }}">Download All Species CSV</a>
+      </div>
       {% if load_error %}
       <p class="error-text">Unable to load protein data: {{ load_error }}</p>
       {% endif %}
@@ -176,8 +212,13 @@
         {% for row in species_stats %}
         <div class="col-12 col-lg-6">
           <article class="border rounded-3 p-3 h-100">
-            <h3 class="species-title">{{ row.species }}</h3>
-            <p class="species-meta">{{ row.ptm_count }} PTMs across {{ row.ptm_type_count }} PTM types</p>
+            <div class="species-header">
+              <div>
+                <h3 class="species-title">{{ row.species }}</h3>
+                <p class="species-meta">{{ row.ptm_count }} PTMs across {{ row.ptm_type_count }} PTM types</p>
+              </div>
+              <a class="download-link" href="{{ url_for('statistics_ptm_breakdown_csv', species=row.species) }}">Download CSV</a>
+            </div>
             {% if row.ptm_types %}
             <div class="chart-wrap">
               <canvas
