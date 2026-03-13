@@ -5,7 +5,7 @@ This repository now runs the read-only minimal Flask app only.
 ## Run
 
 ```bash
-cd /Users/kmn4mj/GIT/public/proteomescout-v4
+cd <dir_to_clone>/proteomescout-v4
 conda env create -f environment-minimal.yml
 conda activate pscout-minimal
 python run_minimal.py
