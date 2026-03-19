@@ -132,7 +132,7 @@
                 <th>Protein</th>
                 <th>Gene</th>
                 <th>Species</th>
-                <th>Accessions</th>
+                <th>UniProt ID</th>
                 <th class="text-end">Viewer</th>
               </tr>
             </thead>
@@ -145,7 +145,13 @@
                 </td>
                 <td>{{ protein.acc_gene or '–' }}</td>
                 <td>{{ protein.species or '–' }}</td>
-                <td class="mono">{{ protein.accessions or protein.uniprot_id or '–' }}</td>
+                <td class="mono">
+                  {% if protein.uniprot_id %}
+                  <a href="https://www.uniprot.org/uniprotkb/{{ protein.uniprot_id }}/entry" target="_blank" rel="noreferrer">{{ protein.uniprot_id }}</a>
+                  {% else %}
+                  –
+                  {% endif %}
+                </td>
                 <td class="text-end">
                   <a class="btn btn-sm btn-outline-primary" href="{{ url_for('proteins.structure', protein_id=protein.protein_id) }}">Open structure</a>
                 </td>
