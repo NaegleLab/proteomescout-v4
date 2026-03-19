@@ -3,8 +3,9 @@ import os
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'tsv-proteomescout-dev-key')
-    PROTEIN_DATA_TSV_PATH = os.environ.get('PROTEIN_DATA_TSV_PATH', 'data/data.tsv')
-    CITATIONS_TSV_PATH = os.environ.get('CITATIONS_TSV_PATH', 'data/citations.tsv')
+    DATA_ROOT_DIR = os.environ.get('PROTEOMESCOUT_DATA_DIR', 'data')
+    PROTEIN_DATA_TSV_PATH = os.path.join(DATA_ROOT_DIR, 'data.tsv')
+    CITATIONS_TSV_PATH = os.path.join(DATA_ROOT_DIR, 'citations.tsv')
     MAX_SEARCH_RESULTS = int(os.environ.get('MAX_SEARCH_RESULTS', '200'))
     NAEGLE_LAB_URL = os.environ.get(
         'NAEGLE_LAB_URL',

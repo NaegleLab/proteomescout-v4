@@ -19,17 +19,28 @@ python run.py
 Open:
 
 ```text
-http://127.0.0.1:5000/
+http://127.0.0.1:5001/
 ```
 
-## Data File Overrides
+`run.py` defaults to port `5001` to avoid common local conflicts on `5000`.
+You can override this with `PORT`, for example:
+
+```bash
+PORT=5050 python run.py
+```
+
+## Data Directory Configuration
 Current location of ProteomeScout Database Files:  [Jan 2026 ProteomeScout on Figshare](https://doi.org/10.6084/m9.figshare.31129045.v1)
 
 ```bash
-PROTEIN_DATA_TSV_PATH=/absolute/path/to/data.tsv \
-CITATIONS_TSV_PATH=/absolute/path/to/citations.tsv \
+PROTEOMESCOUT_DATA_DIR=/absolute/path/to/directory/with-tsv-files \
 python run.py
 ```
+
+Expected files inside `PROTEOMESCOUT_DATA_DIR`:
+
+- `data.tsv`
+- `citations.tsv`
 
 ## Key Files
 
