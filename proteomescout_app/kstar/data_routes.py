@@ -12,12 +12,55 @@ Routes:
 from flask import request, jsonify
 import pandas as pd
 import logging
+import os
+import re
 
 from proteomescout_app.kstar import bp
 from proteomescout_app.kstar.utils import create_error_response
 from proteomescout_app.kstar.modules import read_csv_file, validate_files, validate_dataframe_compatibility
 
 logger = logging.getLogger(__name__)
+
+ACTIVITIES_PATTERN = re.compile(r'^(?P<experiment>.+)_mann_whitney_activities\.tsv$', re.IGNORECASE)
+
+
+@bp.route('/discover_file_sets', methods=['POST'])
+def discover_file_sets():
+    try:
+        directory_path = (request.form.get('directoryPath') or '').strip()
+        if not directory_path:
+            return jsonify({'error': 'Please provide a directory path.'}), 400
+        if not os.path.isdir(directory_path):
+            return jsonify({'error': f'Not a directory: {directory_path}'}), 400
+
+        experiments = []
+        for filename in os.listdir(directory_path):
+            match = ACTIVITIES_PATTERN.match(filename)
+            if not match:
+                continue
+
+            experiment_name = match.group('experiment')
+            activities_path = os.path.join(directory_path, f'{experiment_name}_mann_whitney_activities.tsv')
+            fpr_path = os.path.join(directory_path, f'{experiment_name}_mann_whitney_fpr.tsv')
+            binary_path = os.path.join(directory_path, f'{experiment_name}_binarized_experiment.tsv')
+
+            if not os.path.isfile(activities_path) or not os.path.isfile(fpr_path):
+                continue
+
+            experiments.append(
+                {
+                    'experiment': experiment_name,
+                    'activitiesPath': activities_path,
+                    'fprPath': fpr_path,
+                    'binaryEvidencePath': binary_path if os.path.isfile(binary_path) else None,
+                }
+            )
+
+        experiments.sort(key=lambda item: item['experiment'].lower())
+        return jsonify({'directory': directory_path, 'experiments': experiments})
+    except Exception as e:
+        logger.error('Error in discover_file_sets: %s', e)
+        return jsonify(create_error_response(e)), 500
 
 @bp.route('/get_columns', methods=['POST'])
 @validate_files
@@ -46,10 +89,20 @@ def get_columns():
     try:
         activities_file = request.files.get('activitiesFile')
         fpr_file = request.files.get('fprFile')
-        logger.info("Processing files: %s, %s", activities_file.filename, fpr_file.filename)
+        activities_path = (request.form.get('activitiesPath') or '').strip()
+        fpr_path = (request.form.get('fprPath') or '').strip()
+
+        if activities_file and fpr_file:
+            logger.info("Processing uploaded files: %s, %s", activities_file.filename, fpr_file.filename)
+            activities_source = activities_file
+            fpr_source = fpr_file
+        else:
+            logger.info("Processing selected file paths: %s, %s", activities_path, fpr_path)
+            activities_source = activities_path
+            fpr_source = fpr_path
         
-        activities_df = read_csv_file(activities_file)
-        fpr_df = read_csv_file(fpr_file)
+        activities_df = read_csv_file(activities_source)
+        fpr_df = read_csv_file(fpr_source)
         
         compatibility_error = validate_dataframe_compatibility(activities_df, fpr_df)
         if compatibility_error:

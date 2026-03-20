@@ -104,14 +104,10 @@
     <div class="form-section">
       <h2>Load Data</h2>
       <div class="mb-3">
-        <label for="kstarActivitiesFile" class="file-input-label">Upload KSTAR activities file:</label>
-        <input type="file" id="kstarActivitiesFile" name="kstarActivitiesFile" class="form-control" accept=".tsv" />
-        <small class="text-muted">Limit 200MB per file &bull; TSV format</small>
-      </div>
-      <div class="mb-3">
-        <label for="kstarFPRFile" class="file-input-label">Upload KSTAR false positive rate file:</label>
-        <input type="file" id="kstarFPRFile" name="kstarFPRFile" class="form-control" accept=".tsv" />
-        <small class="text-muted">Limit 200MB per file &bull; TSV format</small>
+        <label for="kstarCombinedFilesInput" class="file-input-label">Upload KSTAR result files:</label>
+        <input type="file" id="kstarCombinedFilesInput" name="kstarCombinedFilesInput" class="form-control" accept=".tsv" multiple />
+        <small class="text-muted">Select your activities and FPR files together. Files are auto-mapped by filename containing <strong>_activities</strong> and <strong>_fpr</strong>.</small>
+        <div id="kstarCombinedFilesStatus" class="text-muted small mt-1"></div>
       </div>
     </div>
 

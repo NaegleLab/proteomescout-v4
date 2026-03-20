@@ -3,6 +3,8 @@ window.plotActive = false;
 window.availableKinases = [];
 window.availableSamples = [];
 window.sortableKinaseList;
+window.selectedActivitiesFile = null;
+window.selectedFprFile = null;
 
 // Constants for raster formats
 const RASTER_FORMATS = {
@@ -125,11 +127,11 @@ function displayPlotResults(data) {
 // AJAX interactions
 function submitForm() {
   console.log('Submitting main form');
-  const activitiesFile = document.getElementById('kstarActivitiesFile').files[0];
-  const fprFile = document.getElementById('kstarFPRFile').files[0];
+  const activitiesFile = window.selectedActivitiesFile;
+  const fprFile = window.selectedFprFile;
 
   if (!activitiesFile || !fprFile) {
-    alert('Please upload both activities and FPR files');
+    alert('Please upload files that include one _activities TSV and one _fpr TSV.');
     return;
   }
 
@@ -386,8 +388,8 @@ function setupDendrogramToggles() {
 // File input handling
 function handleFileInputs() {
   console.log('File input changed');
-  const activitiesFile = document.getElementById('kstarActivitiesFile').files[0];
-  const fprFile = document.getElementById('kstarFPRFile').files[0];
+  const activitiesFile = window.selectedActivitiesFile;
+  const fprFile = window.selectedFprFile;
   if (!activitiesFile || !fprFile) return;
 
   const formData = new FormData();
@@ -404,6 +406,70 @@ function handleFileInputs() {
       if (window.availableKinases.length) updateKinaseSelect();
     })
     .catch(err => alert('Error processing files: ' + (err.error||err.message)));
+}
+
+function getFileRole(fileName) {
+  const lowerName = fileName.toLowerCase();
+  if (lowerName.includes('_activities')) return 'activities';
+  if (lowerName.includes('_fpr')) return 'fpr';
+  return null;
+}
+
+function getExperimentPrefix(fileName) {
+  const lowerName = fileName.toLowerCase();
+  if (lowerName.endsWith('_activities.tsv')) {
+    return lowerName.slice(0, lowerName.length - '_activities.tsv'.length);
+  }
+  if (lowerName.endsWith('_fpr.tsv')) {
+    return lowerName.slice(0, lowerName.length - '_fpr.tsv'.length);
+  }
+  return null;
+}
+
+function setCombinedFileStatus(message, isError = false) {
+  const statusEl = document.getElementById('kstarCombinedFilesStatus');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.className = isError ? 'text-danger small mt-1' : 'text-muted small mt-1';
+}
+
+function handleCombinedFileSelection(event) {
+  const files = Array.from(event?.target?.files || []);
+  if (!files.length) {
+    window.selectedActivitiesFile = null;
+    window.selectedFprFile = null;
+    setCombinedFileStatus('');
+    return;
+  }
+
+  const activitiesCandidates = files.filter((file) => getFileRole(file.name) === 'activities');
+  const fprCandidates = files.filter((file) => getFileRole(file.name) === 'fpr');
+
+  if (activitiesCandidates.length !== 1 || fprCandidates.length !== 1) {
+    window.selectedActivitiesFile = null;
+    window.selectedFprFile = null;
+    setCombinedFileStatus('Please select exactly one _activities TSV and one _fpr TSV in the same upload.', true);
+    return;
+  }
+
+  const activitiesPrefix = getExperimentPrefix(activitiesCandidates[0].name);
+  const fprPrefix = getExperimentPrefix(fprCandidates[0].name);
+  if (!activitiesPrefix || !fprPrefix || activitiesPrefix !== fprPrefix) {
+    window.selectedActivitiesFile = null;
+    window.selectedFprFile = null;
+    setCombinedFileStatus(
+      'The selected _activities and _fpr files must share the same prefix before the suffix.',
+      true
+    );
+    return;
+  }
+
+  window.selectedActivitiesFile = activitiesCandidates[0];
+  window.selectedFprFile = fprCandidates[0];
+  setCombinedFileStatus(
+    `Mapped activities: ${window.selectedActivitiesFile.name} | Mapped fpr: ${window.selectedFprFile.name}`
+  );
+  handleFileInputs();
 }
 
 // Add this function after your global variables at the top
@@ -433,8 +499,7 @@ window.getDisplayableKinases = function() {
 // DOM ready setup
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM Content Loaded');
-  document.getElementById('kstarActivitiesFile')?.addEventListener('change', handleFileInputs);
-  document.getElementById('kstarFPRFile')?.addEventListener('change', handleFileInputs);
+  document.getElementById('kstarCombinedFilesInput')?.addEventListener('change', handleCombinedFileSelection);
   initSelect2();
   setupDendrogramToggles();
 

@@ -64,6 +64,11 @@ def read_csv_file(file) -> pd.DataFrame:
     Returns:
         Pandas DataFrame with data and proper index
     """
+    if isinstance(file, (str, os.PathLike)):
+        file_path = str(file)
+        sep = get_sep(file_path)
+        return pd.read_csv(file_path, sep=sep, index_col=0)
+
     sep = get_sep(file.filename)
     try:
         return pd.read_csv(file, sep=sep, index_col=0)
@@ -221,13 +226,30 @@ def validate_files(func):
     def wrapper(*args, **kwargs):
         activities_file = request.files.get('activitiesFile')
         fpr_file = request.files.get('fprFile')
-        if not activities_file or not fpr_file:
-            return jsonify({"error": "Please provide both activities and FPR files."}), 400
-        for file in [activities_file, fpr_file]:
-            if not FormDataValidator.validate_file_extension(file.filename, ALLOWED_FILE_EXTENSIONS):
+
+        if activities_file and fpr_file:
+            for file in [activities_file, fpr_file]:
+                if not FormDataValidator.validate_file_extension(file.filename, ALLOWED_FILE_EXTENSIONS):
+                    return jsonify({
+                        "error": f"Invalid file extension for {file.filename}. Allowed: {', '.join(ALLOWED_FILE_EXTENSIONS)}"
+                    }), 400
+            return func(*args, **kwargs)
+
+        activities_path = (request.form.get('activitiesPath') or '').strip()
+        fpr_path = (request.form.get('fprPath') or '').strip()
+        if not activities_path or not fpr_path:
+            return jsonify({
+                "error": "Please provide both activities and FPR files, or select an auto-detected experiment set."
+            }), 400
+
+        for file_path in [activities_path, fpr_path]:
+            if not os.path.isfile(file_path):
+                return jsonify({"error": f"File not found: {file_path}"}), 400
+            if not FormDataValidator.validate_file_extension(file_path, ALLOWED_FILE_EXTENSIONS):
                 return jsonify({
-                    "error": f"Invalid file extension for {file.filename}. Allowed: {', '.join(ALLOWED_FILE_EXTENSIONS)}"
+                    "error": f"Invalid file extension for {file_path}. Allowed: {', '.join(ALLOWED_FILE_EXTENSIONS)}"
                 }), 400
+
         return func(*args, **kwargs)
     return wrapper
 

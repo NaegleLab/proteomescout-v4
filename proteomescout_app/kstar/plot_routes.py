@@ -90,10 +90,22 @@ def generate_plot():
         activities_file = request.files.get('activitiesFile')
         fpr_file = request.files.get('fprFile')
         binary_evidence_file = request.files.get('binary_evidence')
+        activities_path = (request.form.get('activitiesPath') or '').strip()
+        fpr_path = (request.form.get('fprPath') or '').strip()
+        binary_evidence_path = (request.form.get('binaryEvidencePath') or '').strip()
+
+        if activities_file and fpr_file:
+            activities_source = activities_file
+            fpr_source = fpr_file
+        else:
+            activities_source = activities_path
+            fpr_source = fpr_path
+
+        binary_evidence_source = binary_evidence_file if binary_evidence_file else (binary_evidence_path or None)
         
         # Read the CSV data into dataframes
-        activities_df = read_csv_file(activities_file)
-        fpr_df = read_csv_file(fpr_file)
+        activities_df = read_csv_file(activities_source)
+        fpr_df = read_csv_file(fpr_source)
         binary_evidence_df = None  # Evidence functionality removed
         
         # Process the raw activities data (log transform, etc.)
