@@ -290,7 +290,14 @@ def search_proteins(query='', peptide='', species='', limit=None):
     # Primary sort: PTM record volume (descending).
     # Secondary sort: existing query relevance ranking (exact/prefix/name/id).
     matches.sort(key=lambda item: (-item[1], item[0]))
-    return [protein for _, __, protein in matches[:max_results]]
+
+    enriched_results = []
+    for _, ptm_count, protein in matches[:max_results]:
+        protein_with_counts = dict(protein)
+        protein_with_counts['ptm_count'] = ptm_count
+        enriched_results.append(protein_with_counts)
+
+    return enriched_results
 
 
 def _collect_species_ptm_totals():
