@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Annotate Dataset – ProteomeScout</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --teal: #009ca9;
+      --teal-dark: #007f89;
+      --ink: #1f2a36;
+    }
+    body {
+      background: #f5f7fa;
+      color: var(--ink);
+    }
+    .top-nav {
+      background: #ffffff;
+      border-bottom: 2px solid #d8e8ec;
+      box-shadow: 0 2px 8px rgba(22, 50, 70, 0.05);
+    }
+    .top-nav .inner,
+    .app-nav .inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0.15rem 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+    }
+    .brand img {
+      width: 108px;
+      height: 108px;
+      object-fit: contain;
+    }
+    .nav-links,
+    .app-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      flex-wrap: wrap;
+    }
+    .nav-pill,
+    .app-pill {
+      border: 1px solid #cfe4e8;
+      color: #1e3e4c;
+      text-decoration: none;
+      background: #f8fcfd;
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.97rem;
+      font-weight: 600;
+      line-height: 1.1;
+    }
+    .nav-pill:hover,
+    .app-pill:hover {
+      border-color: var(--teal);
+      color: var(--teal-dark);
+      background: #eef8fa;
+    }
+    .app-nav {
+      background: linear-gradient(180deg, #ffffff 0%, #f7fbfc 100%);
+      border-bottom: 1px solid #d8e8ec;
+    }
+    .page-shell {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .form-section {
+      background: #fff;
+      border: 1px solid #d8e8ec;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .form-section h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--ink);
+    }
+    .btn-teal {
+      background: var(--teal);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1.5rem;
+      font-weight: 600;
+    }
+    .btn-teal:hover {
+      background: var(--teal-dark);
+      color: #fff;
+    }
+    .btn-teal:disabled {
+      background: #a0cfd4;
+      cursor: not-allowed;
+    }
+    .column-section {
+      display: none;
+    }
+    .column-section.visible {
+      display: block;
+    }
+    #statusMsg {
+      min-height: 1.5rem;
+    }
+    .spinner-border-sm {
+      vertical-align: middle;
+    }
+    @media (max-width: 900px) {
+      .top-nav .inner,
+      .app-nav .inner {
+        display: block;
+      }
+      .nav-links,
+      .app-links {
+        margin-top: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  {% include 'includes/site_header.html' %}
+
+  <div class="container page-shell">
+    <h1 class="mb-1">Annotate a Phosphoproteomic Dataset</h1>
+    <p class="text-muted mb-4">
+      Upload a CSV or TSV file, identify the UniProt accession and peptide
+      columns, choose annotation options, and download the result enriched with
+      gene names, domains, GO terms, and site-level information from
+      ProteomeScout.
+    </p>
+
+    <!-- Step 1 – Upload -->
+    <div class="form-section">
+      <h2><span class="badge bg-secondary me-2">1</span>Upload Dataset</h2>
+      <div class="mb-3">
+        <label for="datasetFile" class="form-label">Select file (CSV or TSV):</label>
+        <input
+          type="file"
+          id="datasetFile"
+          class="form-control"
+          accept=".csv,.tsv,.txt"
+        />
+        <div class="form-text">
+          Maximum file size: 100 MB. The file must contain a header row with
+          column names.
+        </div>
+      </div>
+      <div id="fileStatus" class="text-muted small"></div>
+    </div>
+
+    <!-- Step 2 – Column Selection -->
+    <div class="form-section column-section" id="columnSection">
+      <h2><span class="badge bg-secondary me-2">2</span>Select Columns</h2>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="accessionCol" class="form-label">
+            UniProt/SwissProt Accession Column
+            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip"
+               title="Column containing UniProt/SwissProt accession IDs (e.g. P12345)"></i>
+          </label>
+          <select id="accessionCol" class="form-select">
+            <option value="">— select —</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="peptideCol" class="form-label">
+            Peptide Sequence Column
+            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip"
+               title="Peptide sequences with modified residues as lowercase (e.g. ANsFVGTAQYV for pS241)"></i>
+          </label>
+          <select id="peptideCol" class="form-select">
+            <option value="">— select —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-text mt-2">
+        Peptides must have modified residues written in <strong>lowercase</strong>
+        (e.g. <code>ANsFVGTAQYV</code> for phospho-S241). All other residues should
+        be uppercase.
+      </div>
+    </div>
+
+    <!-- Step 3 – Options -->
+    <div class="form-section column-section" id="optionsSection">
+      <h2><span class="badge bg-secondary me-2">3</span>Annotation Options</h2>
+      <div class="mb-2">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="findSite" checked />
+          <label class="form-check-label" for="findSite">
+            Find modification sites
+            <span class="text-muted small">
+              – locates each modified residue within the full protein sequence and
+              adds position, domain, macro-molecular structure, and secondary
+              structure context
+            </span>
+          </label>
+        </div>
+      </div>
+      <div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="goTerms" checked />
+          <label class="form-check-label" for="goTerms">
+            Include GO terms
+            <span class="text-muted small">
+              – appends Gene Ontology terms (Molecular Function, Biological
+              Process, Cellular Component) to each row
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Run -->
+    <div class="form-section column-section" id="runSection">
+      <h2><span class="badge bg-secondary me-2">4</span>Annotate &amp; Download</h2>
+      <p class="text-muted small mb-3">
+        Annotation queries ProteomeScout for every row in your dataset.
+        Processing time scales with dataset size — a few hundred rows typically
+        completes in under a minute.
+      </p>
+      <div id="statusMsg" class="mb-3"></div>
+      <button id="runBtn" class="btn btn-teal" disabled>
+        <i class="bi bi-play-fill me-1"></i>Annotate &amp; Download
+      </button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      const ROUTES = {
+        getColumns: '{{ url_for("annotate.get_columns") }}',
+        run: '{{ url_for("annotate.run_annotation") }}',
+      };
+
+      const fileInput     = document.getElementById('datasetFile');
+      const fileStatus    = document.getElementById('fileStatus');
+      const columnSection = document.getElementById('columnSection');
+      const optionsSection= document.getElementById('optionsSection');
+      const runSection    = document.getElementById('runSection');
+      const accessionSel  = document.getElementById('accessionCol');
+      const peptideSel    = document.getElementById('peptideCol');
+      const findSiteChk   = document.getElementById('findSite');
+      const goTermsChk    = document.getElementById('goTerms');
+      const runBtn        = document.getElementById('runBtn');
+      const statusMsg     = document.getElementById('statusMsg');
+
+      // Initialise Bootstrap tooltips
+      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+        new bootstrap.Tooltip(el);
+      });
+
+      // ------------------------------------------------------------------ //
+      // Step 1: detect columns when a file is selected                      //
+      // ------------------------------------------------------------------ //
+      fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        fileStatus.textContent = 'Detecting columns…';
+        hideColumnSections();
+        runBtn.disabled = true;
+
+        const fd = new FormData();
+        fd.append('datasetFile', file);
+
+        try {
+          const resp = await fetch(ROUTES.getColumns, { method: 'POST', body: fd });
+          const data = await resp.json();
+          if (!resp.ok || data.error) {
+            fileStatus.innerHTML =
+              `<span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>${escHtml(data.error || 'Unknown error')}</span>`;
+            return;
+          }
+          fileStatus.innerHTML =
+            `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>${escHtml(file.name)} — ${data.columns.length} columns detected.</span>`;
+          populateSelects(data.columns);
+          showColumnSections();
+          updateRunBtn();
+        } catch (err) {
+          fileStatus.innerHTML =
+            `<span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Could not read file: ${escHtml(err.message)}</span>`;
+        }
+      });
+
+      // Re-check run button whenever selections change
+      [accessionSel, peptideSel].forEach(el => {
+        el.addEventListener('change', updateRunBtn);
+      });
+
+      // ------------------------------------------------------------------ //
+      // Step 4: annotate and download                                       //
+      // ------------------------------------------------------------------ //
+      runBtn.addEventListener('click', async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const accCol = accessionSel.value;
+        const pepCol = peptideSel.value;
+        if (!accCol || !pepCol) {
+          setStatus('warning', 'Please select both the accession and peptide columns.');
+          return;
+        }
+
+        runBtn.disabled = true;
+        setStatus('info',
+          '<span class="spinner-border spinner-border-sm me-2" role="status"></span>' +
+          'Annotating dataset — this may take a minute for large files…');
+
+        const fd = new FormData();
+        fd.append('datasetFile', file);
+        fd.append('accessionCol', accCol);
+        fd.append('peptideCol', pepCol);
+        fd.append('findSite', findSiteChk.checked ? '1' : '0');
+        fd.append('goTerms',  goTermsChk.checked  ? '1' : '0');
+
+        try {
+          const resp = await fetch(ROUTES.run, { method: 'POST', body: fd });
+
+          if (!resp.ok) {
+            let errMsg = `Server error ${resp.status}`;
+            try {
+              const errData = await resp.json();
+              errMsg = errData.error || errMsg;
+            } catch (_) {}
+            setStatus('danger', `<i class="bi bi-exclamation-triangle-fill me-1"></i>${escHtml(errMsg)}`);
+            runBtn.disabled = false;
+            return;
+          }
+
+          // Trigger file download from the blob
+          const blob = await resp.blob();
+          const cd   = resp.headers.get('Content-Disposition') || '';
+          const match = cd.match(/filename="([^"]+)"/);
+          const filename = match ? match[1] : 'annotated_dataset.csv';
+
+          const url = URL.createObjectURL(blob);
+          const a   = document.createElement('a');
+          a.href     = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          setStatus('success',
+            `<i class="bi bi-check-circle-fill me-1"></i>Annotation complete — download started as <strong>${escHtml(filename)}</strong>.`);
+        } catch (err) {
+          setStatus('danger', `<i class="bi bi-exclamation-triangle-fill me-1"></i>Request failed: ${escHtml(err.message)}`);
+        } finally {
+          runBtn.disabled = false;
+        }
+      });
+
+      // ------------------------------------------------------------------ //
+      // Helpers                                                              //
+      // ------------------------------------------------------------------ //
+      function populateSelects(columns) {
+        [accessionSel, peptideSel].forEach(sel => {
+          sel.innerHTML = '<option value="">— select —</option>';
+          columns.forEach(col => {
+            const opt = document.createElement('option');
+            opt.value = col;
+            opt.textContent = col;
+            sel.appendChild(opt);
+          });
+        });
+
+        // Auto-select likely columns by common naming patterns
+        autoSelect(accessionSel, columns, ['uniprot', 'accession', 'acc', 'id', 'swissprot']);
+        autoSelect(peptideSel,   columns, ['peptide', 'pep', 'sequence', 'seq']);
+      }
+
+      function autoSelect(sel, columns, hints) {
+        for (const hint of hints) {
+          const match = columns.find(c => c.toLowerCase().includes(hint));
+          if (match) { sel.value = match; return; }
+        }
+      }
+
+      function updateRunBtn() {
+        const ok = accessionSel.value && peptideSel.value && fileInput.files.length > 0;
+        runBtn.disabled = !ok;
+      }
+
+      function showColumnSections() {
+        [columnSection, optionsSection, runSection].forEach(el => el.classList.add('visible'));
+      }
+
+      function hideColumnSections() {
+        [columnSection, optionsSection, runSection].forEach(el => el.classList.remove('visible'));
+        statusMsg.innerHTML = '';
+      }
+
+      function setStatus(level, html) {
+        const colours = { success: 'text-success', danger: 'text-danger', warning: 'text-warning', info: 'text-secondary' };
+        statusMsg.innerHTML = `<span class="${colours[level] || ''}">${html}</span>`;
+      }
+
+      function escHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+    })();
+  </script>
+</body>
+</html>

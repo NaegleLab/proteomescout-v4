@@ -83,10 +83,10 @@
     }
     .portal-wrap {
       position: relative;
-      width: min(88vw, 700px);
+      width: min(90vw, 740px);
       margin: 0 auto 0.1rem;
       aspect-ratio: 1 / 1;
-      min-height: 330px;
+      min-height: 360px;
     }
     .hero {
       position: absolute;
@@ -104,8 +104,8 @@
       z-index: 2;
     }
     .menu-circle {
-      width: clamp(92px, 13.5vw, 132px);
-      height: clamp(92px, 13.5vw, 132px);
+      width: clamp(94px, 12.2vw, 126px);
+      height: clamp(94px, 12.2vw, 126px);
       border-radius: 999px;
       border: 5px solid var(--teal-dark);
       background: var(--teal);
@@ -126,11 +126,18 @@
       transform: translate(-50%, -50%);
       font-size: clamp(0.82rem, 1.55vw, 1rem);
     }
-    .menu-circle.search { left: 30.95%; top: 39%; }
-    .menu-circle.kstar { left: 69.05%; top: 39%; }
-    .menu-circle.api { left: 30.95%; top: 61%; }
-    .menu-circle.kstar-galaxy { left: 69.05%; top: 61%; }
-    .menu-circle.help { left: 50%; top: 28%; }
+    .menu-circle.search { left: 36.8%; top: 24.2%; }
+    .menu-circle.kstar { left: 63.2%; top: 24.2%; }
+    .menu-circle.kstar-galaxy { left: 78.6%; top: 45.5%; }
+    .menu-circle.statistics { left: 70.5%; top: 70.5%; }
+    .menu-circle.spacer {
+      left: 50%;
+      top: 77%;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .menu-circle.api { left: 29.5%; top: 70.5%; }
+    .menu-circle.annotate { left: 21.4%; top: 45.5%; }
     .menu-circle:hover {
       transform: translate(-50%, -50%) translateY(-2px);
       border-color: #93a01b;
@@ -138,10 +145,10 @@
       color: #fff;
     }
     .hero img {
-      width: clamp(270px, 52%, 430px);
+      width: clamp(300px, 56%, 470px);
       max-width: 72%;
       height: auto;
-      transform: translateX(-8%);
+      transform: translate(-6%, 1%);
     }
     .desc {
       background: #fff;
@@ -179,11 +186,16 @@
       .menu-circle,
       .menu-circle.search,
       .menu-circle.kstar,
-      .menu-circle.api,
       .menu-circle.kstar-galaxy,
-      .menu-circle.help {
+      .menu-circle.statistics,
+      .menu-circle.annotate,
+      .menu-circle.api,
+      .menu-circle.spacer {
         position: static;
         transform: none;
+      }
+      .menu-circle.spacer {
+        display: none;
       }
       .menu-circle.help:hover {
         transform: translateY(-2px);
@@ -214,9 +226,11 @@
       <div class="menu-circles">
         <a class="menu-circle search" href="{{ url_for('proteins.search') }}" title="Find proteins from the TSV repository and open the interactive sequence/structure viewer.">Search<br>Proteins</a>
         <a class="menu-circle kstar" href="{{ url_for('kstar.landing') }}" title="Upload activities and FPR tables to generate publication-ready KSTAR visualizations.">KSTAR<br>Plotting</a>
-        <a class="menu-circle api" href="https://github.com/NaegleLab/ProteomeScoutAPI" target="_blank" rel="noreferrer" title="Open the ProteomeScoutAPI GitHub repository for API docs, code, and usage examples.">ProteomeScout<br>API</a>
         <a class="menu-circle kstar-galaxy" href="https://usegalaxy.org/?tool_id=toolshed.g2.bx.psu.edu%2Frepos%2Fnaegle_lab%2Fkstar_calculate%2Fkstar_calculate%2F1.1.0&amp;version=latest" target="_blank" rel="noreferrer" title="Launch the KSTAR calculate tool in Galaxy.">KSTAR<br>Galaxy</a>
-        <a class="menu-circle help" href="{{ url_for('statistics') }}" title="View species-level protein and PTM summaries from the configured data.tsv file.">Statistics</a>
+        <a class="menu-circle statistics" href="{{ url_for('statistics') }}" title="View species-level protein and PTM summaries from the configured data.tsv file.">Statistics</a>
+        <span class="menu-circle spacer" aria-hidden="true"></span>
+        <a class="menu-circle api" href="https://github.com/NaegleLab/ProteomeScoutAPI" target="_blank" rel="noreferrer" title="Open the ProteomeScoutAPI GitHub repository for API docs, code, and usage examples.">ProteomeScout<br>API</a>
+        <a class="menu-circle annotate" href="{{ url_for('annotate.landing') }}" title="Upload a proteomics dataset, map accession and peptide columns, and download an annotated result file.">Annotate<br>Dataset</a>
       </div>
     </section>
 

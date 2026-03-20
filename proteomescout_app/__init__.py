@@ -18,9 +18,18 @@ def create_app(config_class=Config):
 
     from proteomescout_app.proteins import bp as proteins_bp
     from proteomescout_app.kstar import bp as kstar_bp
+    from proteomescout_app.annotate import bp as annotate_bp
 
     app.register_blueprint(proteins_bp)
     app.register_blueprint(kstar_bp)
+    app.register_blueprint(annotate_bp)
+
+    # Point ProteomeScoutAPI at the application's data directory so it uses
+    # the same ProteomeScout flat files as the rest of the web app.
+    import proteomeScoutAPI.config as _pscout_config
+    _pscout_config.DATASET_DIR = os.path.abspath(
+        app.config.get('PROTEOMESCOUT_API_DATA_DIR', app.config.get('DATA_ROOT_DIR', 'data'))
+    )
 
     @app.route('/')
     def index():
