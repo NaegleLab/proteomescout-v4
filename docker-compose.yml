@@ -1,0 +1,21 @@
+services:
+  proteomescout:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: proteomescout-v4:latest
+    ports:
+      - "5001:5001"
+    environment:
+      SECRET_KEY: "${SECRET_KEY:-local-dev-secret-change-me}"
+      HOST: "0.0.0.0"
+      PORT: "5001"
+      DEBUG: "false"
+      # PROTEOMESCOUT_DATA_DIR must directly contain data.tsv/citations.tsv.
+      PROTEOMESCOUT_DATA_DIR: "/data_root/ProteomeScout_Dataset"
+      # ProteomeScoutAPI expects PROTEOMESCOUT_API_DATA_DIR/ProteomeScout_Dataset/data.tsv.
+      PROTEOMESCOUT_API_DATA_DIR: "/data_root"
+    volumes:
+      # Host path should be the directory that directly contains data.tsv and citations.tsv.
+      - ${PROTEOMESCOUT_DATA_HOST_DIR:?set PROTEOMESCOUT_DATA_HOST_DIR in your shell}:/data_root/ProteomeScout_Dataset:rw
+    restart: unless-stopped

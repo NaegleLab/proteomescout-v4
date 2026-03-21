@@ -153,7 +153,15 @@ def format_protein_modifications(protein):
     evidence_entries = parse_site_evidence_entries(protein.get('evidence', ''))
 
     def citation_is_current(citation):
-        current_value = str(citation.get('Current', citation.get('current', ''))).strip().lower()
+        # Older citation TSV files do not include a Current/current column.
+        # In that case, keep records by default so PTM evidence is preserved.
+        if 'Current' not in citation and 'current' not in citation:
+            return True
+
+        raw_value = citation.get('Current', citation.get('current', ''))
+        current_value = str(raw_value).strip().lower()
+        if current_value in {'', 'nan', 'none'}:
+            return True
         return current_value in {'true', '1', 'yes', 'y'}
 
     def normalize_pmid(value):
