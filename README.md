@@ -52,107 +52,125 @@ Expected files inside `PROTEOMESCOUT_DATA_DIR`:
 
 ## Container Deployment
 
-This repository includes:
+This repository ships a `Dockerfile`, `.dockerignore`, and `docker-compose.yml`.
+Docker and Docker Compose are the only runtime dependencies — no Python or conda
+installation needed on the host.
 
-- `Dockerfile`
-- `.dockerignore`
-- `docker-compose.yml`
+### Prerequisites
 
-### Local Container Test (Docker Compose)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose plugin on Linux)
+- The ProteomeScout dataset directory (see **Data** below)
 
-1. Prepare a host data directory that contains:
-	 - `data.tsv`
-	 - `citations.tsv`
+### Data
 
-2. (Recommended) Make the same files visible to ProteomeScoutAPI's expected path:
+Download the Jan 2026 dataset from Figshare:
+[https://doi.org/10.6084/m9.figshare.31129045.v1](https://doi.org/10.6084/m9.figshare.31129045.v1)
 
-```bash
-mkdir -p /absolute/path/to/proteomescout_data/ProteomeScout_Dataset
-ln -sf ../data.tsv /absolute/path/to/proteomescout_data/ProteomeScout_Dataset/data.tsv
-ln -sf ../citations.tsv /absolute/path/to/proteomescout_data/ProteomeScout_Dataset/citations.tsv
+Extract the archive. The deployment expects a single directory (referred to below
+as `ProteomeScout_Dataset`) that contains **directly**:
+
+```
+ProteomeScout_Dataset/
+    data.tsv         # ~117 MB — full PTM dataset
+    citations.tsv    # experiment / citation metadata
 ```
 
-3. Start the app:
+`citations.tsv` must include a `Current` column (values `TRUE` / `FALSE`) to
+control which citations appear in the UI.
+
+### Setup
 
 ```bash
-cd <dir_to_clone>/proteomescout-v4
-export PROTEOMESCOUT_DATA_HOST_DIR=/absolute/path/to/proteomescout_data
+# 1. Clone the repo
+git clone https://github.com/<org>/proteomescout-v4.git
+cd proteomescout-v4
+
+# 2. Create your local environment file (never committed)
+cp .env.example .env
+```
+
+Edit `.env` with the two required values:
+
+```bash
+# Absolute path to the directory that directly contains data.tsv and citations.tsv
+PROTEOMESCOUT_DATA_HOST_DIR=/path/to/ProteomeScout_Dataset
+
+# Flask secret key — generate one with:
+#   python -c "import secrets; print(secrets.token_hex(32))"
+SECRET_KEY=replace-with-a-strong-random-secret
+```
+
+### Run (Docker Compose)
+
+```bash
+# Build image and start container in the foreground (Ctrl-C to stop)
 docker compose up --build
+
+# Or run in the background
+docker compose up --build -d
+docker compose logs -f proteomescout   # follow logs
+docker compose down                    # stop and remove container
 ```
 
-4. Open:
+The app is available at:
 
-```text
-http://127.0.0.1:5001/
+```
+http://localhost:5001/
 ```
 
-5. Stop:
+### Volume and Environment Variable Reference
 
-```bash
-docker compose down
-```
+| Variable | Where set | Purpose |
+|---|---|---|
+| `PROTEOMESCOUT_DATA_HOST_DIR` | `.env` | Host path mounted into the container |
+| `SECRET_KEY` | `.env` | Flask session signing key |
+| `PROTEOMESCOUT_DATA_DIR` | `docker-compose.yml` | Path inside container to TSV files |
+| `PROTEOMESCOUT_API_DATA_DIR` | `docker-compose.yml` | Parent path for ProteomeScoutAPI |
+| `PORT` | `docker-compose.yml` | Container port (default `5001`) |
+| `DEBUG` | `docker-compose.yml` | Set to `false` in all non-development environments |
 
-### Local Container Test (Plain Docker)
+The compose file mounts `${PROTEOMESCOUT_DATA_HOST_DIR}` to
+`/data_root/ProteomeScout_Dataset` inside the container, then sets:
 
-```bash
-cd <dir_to_clone>/proteomescout-v4
-docker build -t proteomescout-v4:latest .
+- `PROTEOMESCOUT_DATA_DIR=/data_root/ProteomeScout_Dataset`
+- `PROTEOMESCOUT_API_DATA_DIR=/data_root`
 
-docker run --rm -p 5001:5001 \
-	-e SECRET_KEY=change-me \
-	-e HOST=0.0.0.0 \
-	-e PORT=5001 \
-	-e DEBUG=false \
-	-e PROTEOMESCOUT_DATA_DIR=/data \
-	-e PROTEOMESCOUT_API_DATA_DIR=/data \
-	-v /absolute/path/to/proteomescout_data:/data:rw \
-	proteomescout-v4:latest
-```
+No symlinks or additional directory structure are required on the host.
 
-## Cloud Deployment
+## Cloud / HPC Deployment
 
-This app is suitable for cloud container services such as AWS ECS/Fargate,
-Google Cloud Run, Azure Container Apps, and Kubernetes.
+The container image can be deployed on any OCI-compatible runtime
+(AWS ECS/Fargate, Google Cloud Run, Azure Container Apps, Kubernetes, Singularity/Apptainer on HPC, etc.).
 
-### 1. Build and Push Image
+### 1. Build and push the image
 
 ```bash
 docker build -t <registry>/<namespace>/proteomescout-v4:<tag> .
 docker push <registry>/<namespace>/proteomescout-v4:<tag>
 ```
 
-### 2. Runtime Settings
+### 2. Mount data and set environment variables
 
-Set these container environment variables:
+Mount a persistent volume at `/data_root/ProteomeScout_Dataset` containing
+`data.tsv` and `citations.tsv`, then set:
 
-- `HOST=0.0.0.0`
-- `PORT=5001`
-- `DEBUG=false`
-- `SECRET_KEY=<strong-random-secret>`
-- `PROTEOMESCOUT_DATA_DIR=/data`
-- `PROTEOMESCOUT_API_DATA_DIR=/data`
+| Variable | Value |
+|---|---|
+| `HOST` | `0.0.0.0` |
+| `PORT` | `5001` |
+| `DEBUG` | `false` |
+| `SECRET_KEY` | strong random secret (≥ 32 hex chars) |
+| `PROTEOMESCOUT_DATA_DIR` | `/data_root/ProteomeScout_Dataset` |
+| `PROTEOMESCOUT_API_DATA_DIR` | `/data_root` |
 
-Mount persistent storage at `/data` containing:
-
-- `/data/data.tsv`
-- `/data/citations.tsv`
-
-And, for ProteomeScoutAPI compatibility, also ensure:
-
-- `/data/ProteomeScout_Dataset/data.tsv`
-- `/data/ProteomeScout_Dataset/citations.tsv`
-
-These can be symlinks to the top-level TSV files.
-
-### 3. Expose Service
+### 3. Expose the service
 
 - Container port: `5001`
-- Health check path: `/`
+- Health check path: `GET /`
 
-### 4. Production Notes
+### 4. Production notes
 
-- Use a persistent volume (do not rely on ephemeral container storage).
-- Run multiple replicas behind a load balancer if needed.
-- Keep `DEBUG=false` in cloud environments.
-- Restrict inbound access as required by your research environment.
+- Use a persistent volume backed by shared storage — do not bake data into the image.
+- Keep `DEBUG=false`; it disables the Werkzeug debugger and pin-based reloader.
+- Restrict inbound access as required by your institutional network policy.
 
