@@ -161,7 +161,7 @@ Mount a persistent volume at `/data_root/ProteomeScout_Dataset` containing
 | `DEBUG` | `false` |
 | `SECRET_KEY` | strong random secret (≥ 32 hex chars) |
 | `PROTEOMESCOUT_DATA_DIR` | `/data_root/ProteomeScout_Dataset` |
-| `PROTEOMESCOUT_API_DATA_DIR` | `/data_root` |
+
 
 ### 3. Expose the service
 
