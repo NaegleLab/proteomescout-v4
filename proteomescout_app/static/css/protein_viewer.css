@@ -5,6 +5,37 @@
     margin-right:auto;
 }
 
+.ptm_metadata .ptm-site-summary {
+    border: 1px solid #d8e0e8;
+    border-radius: 8px;
+    background: #fbfdff;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+
+.ptm_metadata .ptm-site-title {
+    margin: 0 0 6px;
+    font-size: 1.05rem;
+}
+
+.ptm_metadata .ptm-site-peptide,
+.ptm_metadata .ptm-site-context {
+    margin: 0 0 4px;
+}
+
+.ptm_metadata .ptm-site-label {
+    font-weight: 700;
+}
+
+.ptm_metadata .ptm-center {
+    font-weight: 800;
+    text-decoration: underline;
+}
+
+.ptm_metadata .muted {
+    color: #6d7986;
+}
+
 .protein_viewer {
     margin-left:auto;
     margin-right:auto;

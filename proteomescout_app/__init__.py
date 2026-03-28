@@ -12,6 +12,64 @@ from proteomescout_app.protein_data import get_species_ptm_breakdown_rows, get_s
 FILENAME_SANITIZE_RE = re.compile(r'[^A-Za-z0-9._-]+')
 
 
+def _normalize_species_key(value):
+    return re.sub(r'[^a-z0-9]+', '', str(value or '').strip().lower())
+
+
+def _species_reference_dataset_dir(app):
+    return os.path.join(app.config.get('DATA_ROOT_DIR', 'data'), 'species_reference_datasets')
+
+
+def _load_species_reference_datasets(app):
+    dataset_dir = _species_reference_dataset_dir(app)
+    if not os.path.isdir(dataset_dir):
+        return []
+
+    datasets = []
+    for file_name in sorted(os.listdir(dataset_dir), key=lambda item: item.lower()):
+        if not file_name.lower().endswith('.csv'):
+            continue
+
+        file_path = os.path.join(dataset_dir, file_name)
+        if not os.path.isfile(file_path):
+            continue
+
+        stem = os.path.splitext(file_name)[0]
+        species_guess = stem.replace('_', ' ').replace('-', ' ').strip()
+        species_guess = re.sub(r'\s+', ' ', species_guess)
+        display_label = species_guess.title() if species_guess else stem
+
+        datasets.append(
+            {
+                'file_name': file_name,
+                'path': file_path,
+                'size': os.path.getsize(file_path),
+                'species_label': display_label,
+                'species_key': _normalize_species_key(species_guess),
+            }
+        )
+
+    return datasets
+
+
+def _build_species_reference_lookup(datasets):
+    lookup = {}
+    for dataset in datasets:
+        stem = os.path.splitext(dataset['file_name'])[0]
+        species_candidates = {stem}
+        for suffix in ('_reference_dataset', '_reference', '_dataset'):
+            if stem.lower().endswith(suffix):
+                species_candidates.add(stem[: -len(suffix)])
+
+        for candidate in species_candidates:
+            key = _normalize_species_key(candidate)
+            if not key or key in lookup:
+                continue
+            lookup[key] = dataset
+
+    return lookup
+
+
 def create_app(config_class=Config):
     app = Flask(__name__, static_folder='static', template_folder='templates')
     app.config.from_object(config_class)
@@ -161,7 +219,16 @@ def create_app(config_class=Config):
             },
         ]
 
-        return render_template('downloads.html', files=files, software_tools=software_tools)
+        species_reference_datasets = _load_species_reference_datasets(app)
+        for dataset in species_reference_datasets:
+            dataset['download_url'] = url_for('download_species_reference_dataset', filename=dataset['file_name'])
+
+        return render_template(
+            'downloads.html',
+            files=files,
+            software_tools=software_tools,
+            species_reference_datasets=species_reference_datasets,
+        )
 
     @app.route('/downloads/<file_key>')
     def download_file(file_key):
@@ -175,6 +242,19 @@ def create_app(config_class=Config):
 
         return send_file(file_path, as_attachment=True, download_name=os.path.basename(file_path))
 
+    @app.route('/downloads/species-reference/<path:filename>')
+    def download_species_reference_dataset(filename):
+        safe_name = os.path.basename(str(filename or ''))
+        dataset_dir = _species_reference_dataset_dir(app)
+        file_path = os.path.join(dataset_dir, safe_name)
+
+        if not safe_name.lower().endswith('.csv'):
+            abort(404)
+        if not os.path.isdir(dataset_dir) or not os.path.isfile(file_path):
+            abort(404)
+
+        return send_file(file_path, as_attachment=True, download_name=safe_name)
+
     @app.route('/statistics')
     def statistics():
         try:
@@ -184,7 +264,21 @@ def create_app(config_class=Config):
             species_stats = []
             load_error = str(exc)
 
-        return render_template('statistics.html', species_stats=species_stats, load_error=load_error)
+        species_reference_datasets = _load_species_reference_datasets(app)
+        species_reference_lookup = _build_species_reference_lookup(species_reference_datasets)
+        for row in species_stats:
+            dataset = species_reference_lookup.get(_normalize_species_key(row.get('species', '')))
+            row['reference_dataset_url'] = (
+                url_for('download_species_reference_dataset', filename=dataset['file_name']) if dataset else None
+            )
+            row['reference_dataset_name'] = dataset['file_name'] if dataset else None
+
+        return render_template(
+            'statistics.html',
+            species_stats=species_stats,
+            load_error=load_error,
+            species_reference_datasets=species_reference_datasets,
+        )
 
     @app.route('/statistics/ptm-breakdown.csv')
     def statistics_ptm_breakdown_csv():

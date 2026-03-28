@@ -166,6 +166,32 @@
     </section>
 
     <section class="card-block">
+      <h1>Species Reference Datasets</h1>
+      {% if species_reference_datasets %}
+      <table class="table table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Species</th>
+            <th>Reference CSV</th>
+            <th>Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dataset in species_reference_datasets %}
+          <tr>
+            <td>{{ dataset.species_label }}</td>
+            <td><a href="{{ dataset.download_url }}">{{ dataset.file_name }}</a></td>
+            <td>{{ dataset.size }} bytes</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted mb-0">No species reference CSV files were found in <code>species_reference_datasets</code>.</p>
+      {% endif %}
+    </section>
+
+    <section class="card-block">
       <h1>Software</h1>
       <div class="software-list">
         {% for tool in software_tools %}

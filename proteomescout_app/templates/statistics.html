@@ -217,7 +217,12 @@
                 <h3 class="species-title">{{ row.species }}</h3>
                 <p class="species-meta">{{ row.ptm_count }} PTMs across {{ row.ptm_type_count }} PTM types</p>
               </div>
-              <a class="download-link" href="{{ url_for('statistics_ptm_breakdown_csv', species=row.species) }}">Download CSV</a>
+              <div class="d-flex gap-2 flex-wrap">
+                <a class="download-link" href="{{ url_for('statistics_ptm_breakdown_csv', species=row.species) }}">Download PTM CSV</a>
+                {% if row.reference_dataset_url %}
+                <a class="download-link" href="{{ row.reference_dataset_url }}">Reference Dataset</a>
+                {% endif %}
+              </div>
             </div>
             {% if row.ptm_types %}
             <div class="chart-wrap">
@@ -240,6 +245,32 @@
       </div>
       {% else %}
       <p class="muted mb-0">No PTM type data is available.</p>
+      {% endif %}
+    </section>
+
+    <section class="card-block">
+      <h2 class="h4">Species reference dataset files</h2>
+      {% if species_reference_datasets %}
+      <table class="table table-striped align-middle mt-3 mb-0">
+        <thead>
+          <tr>
+            <th>Species</th>
+            <th>Reference CSV</th>
+            <th>Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for dataset in species_reference_datasets %}
+          <tr>
+            <td>{{ dataset.species_label }}</td>
+            <td><a href="{{ url_for('download_species_reference_dataset', filename=dataset.file_name) }}">{{ dataset.file_name }}</a></td>
+            <td>{{ dataset.size }} bytes</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted mb-0">No species reference CSV files were found in <code>species_reference_datasets</code>.</p>
       {% endif %}
     </section>
   </main>
