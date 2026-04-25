@@ -69,6 +69,33 @@ def get_columns():
         return jsonify({'error': f'Could not parse file: {exc}'}), 400
 
 
+# Columns that annotate_dataset() will append to the DataFrame.
+_ANNOTATION_COLUMNS = {
+    'gene_name', 'domains', 'domain_architecture', 'GO_terms', 'PScout_Errors',
+    'modification_sites', 'aligned_peps', 'documented_phosphosites',
+    'site_in_domain', 'site_in_macro',
+}
+
+
+def _resolve_column_conflicts(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """Rename any input columns that would clash with annotation output columns.
+
+    Returns the (possibly renamed) DataFrame and a list of warning messages
+    describing each rename so the caller can surface them to the user.
+    """
+    conflicts = _ANNOTATION_COLUMNS & set(df.columns)
+    if not conflicts:
+        return df, []
+
+    rename_map = {col: f'{col}_original' for col in conflicts}
+    warnings = [
+        f"Column '{col}' already exists and has been renamed to '{rename_map[col]}' "
+        f"to avoid overwriting your data."
+        for col in sorted(conflicts)
+    ]
+    return df.rename(columns=rename_map), warnings
+
+
 @bp.route('/run', methods=['POST'])
 def run_annotation():
     """Annotate the uploaded dataset and return the result as a CSV download."""
@@ -91,6 +118,11 @@ def run_annotation():
     except Exception as exc:
         logger.warning('run_annotation file parse error: %s', exc)
         return jsonify({'error': f'Could not parse file: {exc}'}), 400
+
+    df, conflict_warnings = _resolve_column_conflicts(df)
+    if conflict_warnings:
+        for msg in conflict_warnings:
+            logger.info('Column conflict resolved: %s', msg)
 
     _configure_api_data_dir()
 
@@ -119,10 +151,10 @@ def run_annotation():
     base = original_name.rsplit('.', 1)[0] if '.' in original_name else original_name
     download_name = f'{base}_annotated.csv'
 
-    return Response(
-        out.getvalue(),
-        mimetype='text/csv',
-        headers={
-            'Content-Disposition': f'attachment; filename="{download_name}"',
-        },
-    )
+    headers = {
+        'Content-Disposition': f'attachment; filename="{download_name}"',
+    }
+    if conflict_warnings:
+        headers['X-Annotation-Warnings'] = ' | '.join(conflict_warnings)
+
+    return Response(out.getvalue(), mimetype='text/csv', headers=headers)
