@@ -143,6 +143,23 @@ def format_protein_domains(protein):
     return sorted(parse_interpro_domains(protein.get('Interpro_domains', '')), key=lambda item: item['start'])
 
 
+def _centered_peptide_window(sequence, site_position, flank=7):
+    sequence = str(sequence or '')
+    if not sequence:
+        return ''
+
+    # PTM sites are 1-based positions in the source data.
+    site_index = int(site_position) - 1
+    if site_index < 0 or site_index >= len(sequence):
+        return ''
+
+    start = max(0, site_index - flank)
+    stop = min(len(sequence), site_index + flank + 1)
+    window = sequence[start:stop]
+    center = site_index - start
+    return window[:center] + window[center:center + 1].lower() + window[center + 1:]
+
+
 def format_protein_modifications(protein):
     experiments = {}
     experiment_links = {}
@@ -151,6 +168,7 @@ def format_protein_modifications(protein):
 
     modifications = parse_modifications(protein.get('modifications', ''))
     evidence_entries = parse_site_evidence_entries(protein.get('evidence', ''))
+    protein_sequence = protein.get('sequence', '')
 
     def citation_is_current(citation):
         # Older citation TSV files do not include a Current/current column.
@@ -223,7 +241,7 @@ def format_protein_modifications(protein):
                 'residue': modification['residue'],
                 'domain': None,
                 'regions': [],
-                'peptide': None,
+                'peptide': _centered_peptide_window(protein_sequence, position, flank=7),
             }
 
         modifications_by_site[position]['mods'].setdefault(modification_type, [])

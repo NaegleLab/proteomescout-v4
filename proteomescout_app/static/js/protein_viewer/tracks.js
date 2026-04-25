@@ -113,11 +113,89 @@ function is_kinase_loop(k, protein_data){
     }
 }
 
+function get_site_context_sections(k, protein_data) {
+    var sections = {
+        domains: [],
+        secondary_structure: [],
+        macromolecular_region: [],
+    };
+    var seen = {
+        domains: {},
+        secondary_structure: {},
+        macromolecular_region: {},
+    };
+
+    function add_unique(section_name, label) {
+        if (!label || !sections[section_name]) {
+            return;
+        }
+        if (seen[section_name][label]) {
+            return;
+        }
+        seen[section_name][label] = true;
+        sections[section_name].push(label);
+    }
+
+    for (var di in protein_data.domains) {
+        var domain = protein_data.domains[di];
+        if (domain.start <= k && k <= domain.stop) {
+            add_unique('domains', domain.label);
+        }
+    }
+
+    var regions = protein_data.regions || {};
+    var domain_region_keys = ['activation_loops', 'uniprot_domains', 'ncbi_domains'];
+    for (var dki in domain_region_keys) {
+        var domain_region_key = domain_region_keys[dki];
+        var domain_region_list = regions[domain_region_key] || [];
+        for (var dri in domain_region_list) {
+            var domain_region = domain_region_list[dri];
+            if (domain_region.start <= k && k <= domain_region.stop) {
+                add_unique('domains', domain_region.label);
+            }
+        }
+    }
+
+    var uniprot_structure = regions.uniprot_structure || [];
+    for (var si in uniprot_structure) {
+        var structure_region = uniprot_structure[si];
+        if (structure_region.start <= k && k <= structure_region.stop) {
+            add_unique('secondary_structure', structure_region.label);
+        }
+    }
+
+    var macro_regions = regions.macro_molecular || [];
+    for (var mi in macro_regions) {
+        var macro_region = macro_regions[mi];
+        if (macro_region.start <= k && k <= macro_region.stop) {
+            add_unique('macromolecular_region', macro_region.label);
+        }
+    }
+
+    return sections;
+}
+
+function build_peptide_html(peptide) {
+    var text = String(peptide || '');
+    if (!text) {
+        return '<span class="muted">Unavailable</span>';
+    }
+
+    var center = text.search(/[a-z]/);
+    if (center < 0) {
+        center = Math.floor(text.length / 2);
+    }
+
+    return text.substring(0, center)
+        + '<strong class="ptm-center">' + text.charAt(center) + '</strong>'
+        + text.substring(center + 1);
+}
+
 function build_ptm_table(k, mods, protein_data) {
-    ms_entries = [];
-    for(m in mods.mods) {
-        for(i in mods.mods[m]){
-            ms = mods.mods[m][i];
+    var ms_entries = [];
+    for(var m in mods.mods) {
+        for(var i in mods.mods[m]){
+            var ms = mods.mods[m][i];
             ms.site_pos = k;
             ms.site = "{0}{1}".format(mods.residue, k);
             ms.experiment_name = protein_data.exps[ms.experiment];
@@ -131,26 +209,43 @@ function build_ptm_table(k, mods, protein_data) {
         }
     }
 
-    d3.select('div.ptm_metadata table').remove();
+    var metadata = d3.select('div.ptm_metadata');
+    metadata.html('');
 
-    table =
-        d3.select('div.ptm_metadata').append('table')
-                .attr('id', 'peptide_table')
-                .attr('class', 'wide-table');
+    var summary = metadata.append('div').attr('class', 'ptm-site-summary');
+    summary.append('h3').attr('class', 'ptm-site-title').text('Selected site: {0}{1}'.format(mods.residue, k));
 
-    header_row = table.append('tr');
-    header_row.append('th')
-            .text('Site');
-    header_row.append('th')
-            .text('Peptide');
+    var peptide_row = summary.append('p').attr('class', 'ptm-site-peptide');
+    peptide_row.append('span').attr('class', 'ptm-site-label').text('Peptide (±7 aa): ');
+    peptide_row.append('span').attr('class', 'peptide').html(build_peptide_html(mods.peptide));
+
+    var site_context = get_site_context_sections(k, protein_data);
+
+    var domains_row = summary.append('p').attr('class', 'ptm-site-context');
+    domains_row.append('span').attr('class', 'ptm-site-label').text('Site falls within - Domains: ');
+    domains_row.append('span').text(site_context.domains.length ? site_context.domains.join(' | ') : 'None');
+
+    var structure_row = summary.append('p').attr('class', 'ptm-site-context');
+    structure_row.append('span').attr('class', 'ptm-site-label').text('Secondary Structure: ');
+    structure_row.append('span').text(
+        site_context.secondary_structure.length ? site_context.secondary_structure.join(' | ') : 'None'
+    );
+
+    var macro_row = summary.append('p').attr('class', 'ptm-site-context');
+    macro_row.append('span').attr('class', 'ptm-site-label').text('Macromolecular region: ');
+    macro_row.append('span').text(
+        site_context.macromolecular_region.length ? site_context.macromolecular_region.join(' | ') : 'None'
+    );
+
+    var table = metadata.append('table')
+        .attr('id', 'peptide_table')
+        .attr('class', 'wide-table');
+
+    var header_row = table.append('tr');
     header_row.append('th')
             .text('Modification');
     header_row.append('th')
             .text('Experiment');
-    header_row.append('th')
-            .text('Annotations');
-    header_row.append('th')
-            .text('Data');
 
     table.selectAll('tr.moditem')
         .data(ms_entries)
@@ -158,48 +253,14 @@ function build_ptm_table(k, mods, protein_data) {
                 .attr('class', 'moditem')
                 .each(function(d){
                     d3.select(this).append('td')
-                        .attr('class', 'modsite')
-                        .text(d.site);
-                    d3.select(this).append('td')
-                        .attr('class', 'peptide')
-                        .text(d.peptide);
-                    d3.select(this).append('td')
                         .text(d.mod_type);
-                    exp_td = d3.select(this).append('td');
+                    var exp_td = d3.select(this).append('td');
                     exp_td.attr('class',"overflow-ellipsis");
                     exp_td.attr('style', "max-width:400px;width:400px");
                     exp_td.append('a')
                         .attr('href', "{0}".format(d.experiment_url))
                         .attr('target', '_blank')
                         .text(d.experiment_name);
-                    
-                    annotation_td = d3.select(this).append('td');
-                    images_url = protein_data.images_url;
-                    if(images_url && d.is_mutated)
-                        annotation_td.append('img')
-                                .attr('title', 'This residue has recorded natural variants')
-                                .attr('src', images_url.format('red_flag.jpg'));
-                    if(images_url && d.kinase)
-                        annotation_td.append('img')
-                                .attr('title', 'This residue is in a Pfam kinase domain')
-                                .attr('src', images_url.format('kinase.jpg'));
-                    if(images_url && d.kinase_loop == 'K')
-                        annotation_td.append('img')
-                                .attr('title', 'This residue is in a predicted kinase activation loop')
-                                .attr('src', images_url.format('active.jpg'));
-                    if(images_url && d.kinase_loop == '?')
-                        annotation_td.append('img')
-                                .attr('title', 'This residue is in a possible kinase activation loop')
-                                .attr('src', images_url.format('question.jpg'));
-
-                    data_td = d3.select(this).append('td');
-
-
-                    if(d.has_data) {
-                        data_td.append('button')
-                            .on('click', function() { window.open("{0}?experiment_id={1}&site_pos={2}".format(protein_data.protein_data_url, d.experiment, d.site_pos), '_blank'); })
-                            .text('View');
-                    }
                 });
 
     scrollBottom($(".ptm_metadata"));

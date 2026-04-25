@@ -45,6 +45,9 @@ def _configure_api_data_dir():
         current_app.config.get('DATA_ROOT_DIR', 'data'),
     )
     pscout_config.DATASET_DIR = os.path.abspath(data_dir)
+    # Disable automatic download/update checks — the dataset is pre-loaded in
+    # the deployment environment and the filesystem may be read-only.
+    pscout_config.UPDATE = False
 
 
 @bp.route('/')
@@ -107,7 +110,7 @@ def run_annotation():
         return jsonify({'error': str(exc)}), 503
     except Exception as exc:
         logger.exception('Annotation failed unexpectedly')
-        return jsonify({'error': f'Annotation failed: {exc}'}), 500
+        return jsonify({'error': 'Annotation failed due to an internal error. Please contact the administrator.'}), 500
 
     out = io.StringIO()
     dataset.dataset.to_csv(out, index=False)
