@@ -349,6 +349,10 @@ StructureViewer.prototype.create_residue_track = function(track_viewer, show_res
 };
 
 StructureViewer.prototype.create_activation_loop_track = function(track_viewer) {
+    var loops = (this.protein_data.regions || {}).activation_loops || [];
+    if (!loops.length) {
+        return;
+    }
     region_track = new RegionTrack('Activation Loops', track_viewer.viewer, this.protein_data);
     region_track.create(track_viewer.axis, this.width, this.region_colors, 'activation_loops');
     track_viewer.add_track(region_track);

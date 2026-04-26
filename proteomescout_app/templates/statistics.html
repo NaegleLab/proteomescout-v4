@@ -186,6 +186,7 @@
             <th>Species</th>
             <th>Protein records</th>
             <th>Total PTMs</th>
+            <th>PTMs in activation loops</th>
             <th>PTM types</th>
           </tr>
         </thead>
@@ -195,6 +196,7 @@
             <td>{{ row.species }}</td>
             <td>{{ row.protein_count }}</td>
             <td>{{ row.ptm_count }}</td>
+            <td>{{ row.ptm_in_activation_loop_count }}</td>
             <td>{{ row.ptm_type_count }}</td>
           </tr>
           {% endfor %}
