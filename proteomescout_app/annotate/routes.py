@@ -13,6 +13,12 @@ import pandas as pd
 from flask import current_app, jsonify, render_template, request, Response
 
 from proteomescout_app.annotate import bp
+from proteomescout_app.protein_data import (
+    load_protein_data,
+    parse_accessions,
+    parse_activation_loops,
+    ptm_in_activation_loop,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +79,7 @@ def get_columns():
 _ANNOTATION_COLUMNS = {
     'gene_name', 'domains', 'domain_architecture', 'GO_terms', 'PScout_Errors',
     'modification_sites', 'aligned_peps', 'documented_phosphosites',
-    'site_in_domain', 'site_in_macro',
+    'site_in_domain', 'site_in_macro', 'site_in_activation_loop',
 }
 
 
@@ -94,6 +100,44 @@ def _resolve_column_conflicts(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]
         for col in sorted(conflicts)
     ]
     return df.rename(columns=rename_map), warnings
+
+
+def _build_accession_loop_map():
+    """Build a dict mapping each UniProt accession to its activation loop list."""
+    acc_map = {}
+    for protein in load_protein_data().values():
+        loops = parse_activation_loops(protein.get('activation_loop', ''))
+        if loops:
+            for acc in parse_accessions(protein.get('accessions', '')):
+                acc_map.setdefault(acc, loops)
+    return acc_map
+
+
+def _add_activation_loop_column(df, accession_col):
+    """Add site_in_activation_loop column to *df* in-place.
+
+    Each cell is a semicolon-separated string of '1'/'0' values aligned to
+    the positions in the modification_sites column.
+    """
+    acc_loop_map = _build_accession_loop_map()
+
+    def _compute(row):
+        acc = str(row.get(accession_col, '') or '').strip()
+        sites_str = str(row.get('modification_sites', '') or '')
+        loops = acc_loop_map.get(acc, [])
+        results = []
+        for site in sites_str.split(';'):
+            site = site.strip()
+            if not site:
+                continue
+            try:
+                pos = int(''.join(c for c in site if c.isdigit()))
+                results.append('1' if ptm_in_activation_loop(pos, loops) else '0')
+            except (ValueError, TypeError):
+                results.append('0')
+        return ';'.join(results)
+
+    df['site_in_activation_loop'] = df.apply(_compute, axis=1)
 
 
 @bp.route('/run', methods=['POST'])
@@ -143,6 +187,9 @@ def run_annotation():
     except Exception as exc:
         logger.exception('Annotation failed unexpectedly')
         return jsonify({'error': 'Annotation failed due to an internal error. Please contact the administrator.'}), 500
+
+    if find_site and 'modification_sites' in dataset.dataset.columns:
+        _add_activation_loop_column(dataset.dataset, accession_col)
 
     out = io.StringIO()
     dataset.dataset.to_csv(out, index=False)
