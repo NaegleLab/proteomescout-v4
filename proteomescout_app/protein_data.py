@@ -214,6 +214,63 @@ def parse_structure(structure_string):
     return structures
 
 
+def parse_activation_loops(activation_loop_string):
+    """Parse the activation_loop column from data.tsv.
+
+    Expected cell format (semicolon-separated per domain):
+        start:stop:quality_value
+
+    Returns a list of dicts with keys: start, stop, quality, label.
+    """
+    if not activation_loop_string or pd.isna(activation_loop_string):
+        return []
+
+    text = str(activation_loop_string).strip()
+    if not text:
+        return []
+
+    def _label(quality):
+        q = str(quality or '').strip().lower()
+        if not q:
+            return 'Possible Kinase Activation Loop'
+        try:
+            return 'Kinase Activation Loop' if float(q) >= 0.5 else 'Possible Kinase Activation Loop'
+        except ValueError:
+            pass
+        if q in {'high', 'confirmed', 'yes', 'true', '1', 'definite', 'certain'}:
+            return 'Kinase Activation Loop'
+        return 'Possible Kinase Activation Loop'
+
+    loops = []
+    for entry in text.split(';'):
+        entry = entry.strip()
+        if not entry:
+            continue
+        parts = entry.split(':')
+        if len(parts) < 2:
+            continue
+        try:
+            start = int(parts[0])
+            stop = int(parts[1])
+        except ValueError:
+            continue
+        quality = ':'.join(parts[2:]).strip() if len(parts) > 2 else ''
+        loops.append({
+            'start': start,
+            'stop': stop,
+            'quality': quality,
+            'label': _label(quality),
+            'source': 'proteomescout',
+        })
+
+    return loops
+
+
+def ptm_in_activation_loop(position, loops):
+    """Return True if *position* falls within any activation loop range."""
+    return any(loop['start'] <= position <= loop['stop'] for loop in loops)
+
+
 def parse_accessions(accession_string):
     if not accession_string or pd.isna(accession_string):
         return []
@@ -305,6 +362,7 @@ def _collect_species_ptm_totals():
         lambda: {
             'protein_count': 0,
             'ptm_count': 0,
+            'ptm_in_activation_loop_count': 0,
             'ptm_type_counts': Counter(),
         }
     )
@@ -314,10 +372,13 @@ def _collect_species_ptm_totals():
         bucket = species_totals[species_name]
         bucket['protein_count'] += 1
 
+        activation_loops = parse_activation_loops(protein.get('activation_loop', ''))
         for modification in parse_modifications(protein.get('modifications', '')):
             ptm_type = str(modification.get('modification', '') or '').strip() or 'Unspecified'
             bucket['ptm_count'] += 1
             bucket['ptm_type_counts'][ptm_type] += 1
+            if ptm_in_activation_loop(modification['position'], activation_loops):
+                bucket['ptm_in_activation_loop_count'] += 1
 
     return species_totals
 
@@ -336,6 +397,7 @@ def get_species_ptm_statistics():
                 'species': species_name,
                 'protein_count': totals['protein_count'],
                 'ptm_count': totals['ptm_count'],
+                'ptm_in_activation_loop_count': totals['ptm_in_activation_loop_count'],
                 'ptm_type_count': len(ordered_types),
                 'ptm_types': ordered_types,
             }
@@ -361,6 +423,7 @@ def get_species_ptm_breakdown_rows(species=None):
                     'ptm_count': ptm_count,
                     'species_total_ptms': totals['ptm_count'],
                     'species_protein_count': totals['protein_count'],
+                    'species_ptm_in_activation_loop_count': totals['ptm_in_activation_loop_count'],
                 }
             )
 

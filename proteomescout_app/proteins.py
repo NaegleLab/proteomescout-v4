@@ -6,6 +6,8 @@ from proteomescout_app.protein_data import (
     get_citation_by_id,
     get_protein_by_id,
     get_species_options,
+    parse_accessions,
+    parse_activation_loops,
     parse_evidence_ids,
     parse_site_evidence_entries,
     parse_interpro_domains,
@@ -27,8 +29,11 @@ def format_protein_mutations(_protein):
     return {}
 
 
-def get_activation_loops(_protein):
-    return []
+def get_activation_loops(protein):
+    return sorted(
+        parse_activation_loops(protein.get('activation_loop', '')),
+        key=lambda item: item['start'],
+    )
 
 
 def _parse_macro_regions(macro_string, allowed_types=None, contains_text=None):
@@ -300,12 +305,13 @@ def structure(protein_id):
         'species': protein.get('species', ''),
     }
 
+    protein_regions = format_protein_regions(protein)
     viewer_data = {
         'seq': protein.get('sequence', ''),
         'domains': format_protein_domains(protein),
         'mods': formatted_mods,
         'mutations': format_protein_mutations(protein),
-        'regions': format_protein_regions(protein),
+        'regions': protein_regions,
         'mod_types': formatted_mod_types,
         'scansite': format_scansite_predictions(protein),
         'exps': formatted_experiments,
@@ -315,6 +321,17 @@ def structure(protein_id):
         'experiment': request.args.get('experiment_id'),
     }
 
+    has_activation_loops = bool(protein_regions.get('activation_loops'))
+    tracks = [
+        'Interpro Domains',
+        'PTMs',
+        'Uniprot Domains',
+        'Uniprot Structure',
+        'Macro Molecular',
+    ]
+    if has_activation_loops:
+        tracks.insert(2, 'Activation Loops')
+
     return render_template(
         'proteins/structure.html',
         protein=template_protein,
@@ -322,13 +339,6 @@ def structure(protein_id):
         viewer_help_url=current_app.config['DOCUMENTATION_URL'],
         experiments=formatted_experiments,
         mod_types=formatted_mod_types,
-        tracks=[
-            'Interpro Domains',
-            'PTMs',
-            'Activation Loops',
-            'Uniprot Domains',
-            'Uniprot Structure',
-            'Macro Molecular',
-        ],
+        tracks=tracks,
         data=json.dumps(viewer_data),
     )

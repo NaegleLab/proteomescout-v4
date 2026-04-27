@@ -299,6 +299,7 @@ def create_app(config_class=Config):
             'ptm_count',
             'species_total_ptms',
             'species_protein_count',
+            'species_ptm_in_activation_loop_count',
         ]
         writer = DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
