@@ -27,7 +27,9 @@ def _load_species_reference_datasets(app):
 
     datasets = []
     for file_name in sorted(os.listdir(dataset_dir), key=lambda item: item.lower()):
-        if not file_name.lower().endswith('.csv'):
+        if file_name.startswith('.') or file_name.startswith('._'):
+            continue
+        if not file_name.lower().endswith(('.csv', '.tsv')):
             continue
 
         file_path = os.path.join(dataset_dir, file_name)
@@ -252,7 +254,9 @@ def create_app(config_class=Config):
         dataset_dir = _species_reference_dataset_dir(app)
         file_path = os.path.join(dataset_dir, safe_name)
 
-        if not safe_name.lower().endswith('.csv'):
+        if safe_name.startswith('.') or safe_name.startswith('._'):
+            abort(404)
+        if not safe_name.lower().endswith(('.csv', '.tsv')):
             abort(404)
         if not os.path.isdir(dataset_dir) or not os.path.isfile(file_path):
             abort(404)
