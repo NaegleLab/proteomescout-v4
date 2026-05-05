@@ -85,9 +85,13 @@ def create_app(config_class=Config):
     # Point ProteomeScoutAPI at the application's data directory so it uses
     # the same ProteomeScout flat files as the rest of the web app.
     import proteomeScoutAPI.config as _pscout_config
-    _pscout_config.DATASET_DIR = os.path.abspath(
+    configured_path = os.path.abspath(
         app.config.get('PROTEOMESCOUT_API_DATA_DIR', app.config.get('DATA_ROOT_DIR', 'data'))
     )
+    if os.path.isfile(os.path.join(configured_path, 'data.tsv')):
+        configured_path = os.path.dirname(configured_path)
+    _pscout_config.DATASET_DIR = configured_path
+    _pscout_config.UPDATE = False
 
     @app.route('/')
     def index():

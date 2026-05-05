@@ -46,11 +46,18 @@ def _read_dataframe(file_obj):
 def _configure_api_data_dir():
     """Point proteomeScoutAPI at the data directory configured in the app."""
     import proteomeScoutAPI.config as pscout_config
-    data_dir = current_app.config.get(
+    configured_path = current_app.config.get(
         'PROTEOMESCOUT_API_DATA_DIR',
         current_app.config.get('DATA_ROOT_DIR', 'data'),
     )
-    pscout_config.DATASET_DIR = os.path.abspath(data_dir)
+
+    # ProteomeScoutAPI expects DATASET_DIR to be the parent directory that
+    # contains a "ProteomeScout_Dataset" folder.
+    resolved = os.path.abspath(configured_path)
+    if os.path.isfile(os.path.join(resolved, 'data.tsv')):
+        resolved = os.path.dirname(resolved)
+
+    pscout_config.DATASET_DIR = resolved
     # Disable automatic download/update checks — the dataset is pre-loaded in
     # the deployment environment and the filesystem may be read-only.
     pscout_config.UPDATE = False
