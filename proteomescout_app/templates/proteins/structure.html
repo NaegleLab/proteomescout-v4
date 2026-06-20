@@ -170,18 +170,22 @@
         </div>
         <h1 class="h3 mb-1">{{ protein.protein_name }}</h1>
         <div class="protein-meta">
-          {% if protein.uniprot_id %}
-          <span>
-            UniProt:
-            <a class="mono" href="https://www.uniprot.org/uniprotkb/{{ protein.uniprot_id }}/entry" target="_blank" rel="noreferrer">
-              {{ protein.uniprot_id }}
-            </a>
-          </span>
+          <div>
+            {% if protein.uniprot_id %}
+            <span>
+              UniProt:
+              <a class="mono" href="https://www.uniprot.org/uniprotkb/{{ protein.uniprot_id }}/entry" target="_blank" rel="noreferrer">
+                {{ protein.uniprot_id }}
+              </a>
+            </span>
+            {% endif %}
+            {% if protein.acc_gene %}<span> · Gene: {{ protein.acc_gene }}</span>{% endif %}
+            {% if protein.protein_name %}<span> · Protein: {{ protein.protein_name }}</span>{% endif %}
+            {% if protein.species %}<span> · Species: {{ protein.species }}</span>{% endif %}
+          </div>
+          {% if protein.ensembl_transcript_id %}
+          <div>Ensembl Transcript: {{ protein.ensembl_transcript_id }}</div>
           {% endif %}
-          {% if protein.ensembl_transcript_id %}<span> · Ensembl Transcript: {{ protein.ensembl_transcript_id }}</span>{% endif %}
-          {% if protein.acc_gene %}<span> · Gene: {{ protein.acc_gene }}</span>{% endif %}
-          {% if protein.protein_name %}<span> · Protein: {{ protein.protein_name }}</span>{% endif %}
-          {% if protein.species %}<span> · Species: {{ protein.species }}</span>{% endif %}
         </div>
       </div>
       <div>
