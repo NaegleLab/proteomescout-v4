@@ -178,6 +178,7 @@
             </a>
           </span>
           {% endif %}
+          {% if protein.ensembl_transcript_id %}<span> · Ensembl Transcript: {{ protein.ensembl_transcript_id }}</span>{% endif %}
           {% if protein.acc_gene %}<span> · Gene: {{ protein.acc_gene }}</span>{% endif %}
           {% if protein.protein_name %}<span> · Protein: {{ protein.protein_name }}</span>{% endif %}
           {% if protein.species %}<span> · Species: {{ protein.species }}</span>{% endif %}
