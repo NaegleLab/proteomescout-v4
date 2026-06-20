@@ -374,6 +374,41 @@ StructureViewer.prototype.create_region_track = function(track_viewer, name, reg
     region_track = new RegionTrack(name, track_viewer.viewer, this.protein_data);
 
     var color_fn = this.region_colors;
+    if (region_name === 'macro_molecular') {
+        var macro_regions = ((this.protein_data.regions || {})[region_name]) || [];
+        var macro_labels = [];
+        for (var i = 0; i < macro_regions.length; i++) {
+            var label = macro_regions[i].label;
+            if (label && macro_labels.indexOf(label) === -1) {
+                macro_labels.push(label);
+            }
+        }
+
+        if (macro_labels.length) {
+            var fallback_region_colors = this.region_colors;
+            var macro_palette = [
+                '#4E79A7',
+                '#F28E2B',
+                '#E15759',
+                '#76B7B2',
+                '#59A14F',
+                '#EDC948',
+                '#B07AA1',
+                '#FF9DA7',
+                '#9C755F',
+                '#BAB0AC'
+            ];
+            var macro_region_colors = {};
+            for (var j = 0; j < macro_labels.length; j++) {
+                macro_region_colors[macro_labels[j]] = macro_palette[j % macro_palette.length];
+            }
+
+            color_fn = function(label) {
+                return macro_region_colors[label] || fallback_region_colors(label);
+            };
+        }
+    }
+
     if (region_name === 'uniprot_structure') {
         var structure_colors = this.uniprot_structure_colors;
         var fallback_region_colors = this.region_colors;
