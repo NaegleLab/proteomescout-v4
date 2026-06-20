@@ -592,7 +592,9 @@ DomainTrack.prototype.update_display = function(axis, viewer_width) {
                 .attr('y', 0)
                 .attr('height', this.domain_height)
                 .attr('title', function(d) {
-                    return d.interpro_id ? d.label + ' (' + d.interpro_id + ')' : d.label;
+                    var boundaries = d.start + '-' + d.stop;
+                    var title = d.interpro_id ? d.label + ' (' + d.interpro_id + ')' : d.label;
+                    return title + ' ' + boundaries;
                 })
                 .style('fill', function(d) { return track.domain_colors( d.label ); } )
                 .style('stroke', "black")
@@ -603,6 +605,7 @@ DomainTrack.prototype.update_display = function(axis, viewer_width) {
                         var interproUrl = 'https://www.ebi.ac.uk/interpro/entry/InterPro/' + d.interpro_id + '/';
                         tooltip += '<br>InterPro ID: <a href="' + interproUrl + '" target="_blank" rel="noreferrer">' + d.interpro_id + '</a>';
                     }
+                    tooltip += '<br>' + d.start + '-' + d.stop;
                     mouseOverOpacity(this, tooltip);
                 })
                 .on('mousemove', function(d) { mouseMove(this); })
@@ -667,13 +670,14 @@ function getRegionTooltip(region) {
         return region.tooltip;
     }
 
+    var region_boundaries = "{0}-{1}".format(region.start, region.stop);
+
     if (region.exon_id) {
         var exon_status = region.constitutive ? 'Constitutive' : 'Not constitutive';
-        var exon_boundaries = "{0}-{1}".format(region.start, region.stop);
-        return region.exon_id + "<br>" + exon_status + "<br>" + exon_boundaries;
+        return region.exon_id + "<br>" + exon_status + "<br>" + region_boundaries;
     }
 
-    return "" + region.label;
+    return "" + region.label + "<br>" + region_boundaries;
 }
 
 function getPatternSafeColorId(color) {
