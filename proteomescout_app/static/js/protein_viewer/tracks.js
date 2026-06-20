@@ -669,7 +669,8 @@ function getRegionTooltip(region) {
 
     if (region.exon_id) {
         var exon_status = region.constitutive ? 'Constitutive' : 'Not constitutive';
-        return region.exon_id + "<br>" + exon_status;
+        var exon_boundaries = "{0}-{1}".format(region.start, region.stop);
+        return region.exon_id + "<br>" + exon_status + "<br>" + exon_boundaries;
     }
 
     return "" + region.label;
