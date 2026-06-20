@@ -9,6 +9,7 @@ from proteomescout_app.protein_data import (
     parse_accessions,
     parse_activation_loops,
     parse_evidence_ids,
+    parse_exons,
     parse_site_evidence_entries,
     parse_interpro_domains,
     parse_modifications,
@@ -140,6 +141,7 @@ def format_protein_regions(protein):
         'uniprot_domains': get_uniprot_domains(protein),
         'uniprot_structure': get_uniprot_structure(protein),
         'macro_molecular': _parse_macro_regions(protein.get('macro_molecular', '')),
+        'exons': parse_exons(protein.get('exons', '')),
         'ncbi_domains': get_ncbi_domains(protein),
     }
 
@@ -302,6 +304,7 @@ def structure(protein_id):
         'protein_name': protein_name,
         'acc_gene': protein.get('acc_gene', ''),
         'uniprot_id': protein.get('uniprot_id', ''),
+        'ensembl_transcript_id': protein.get('ensembl_transcript_id', ''),
         'species': protein.get('species', ''),
     }
 
@@ -328,6 +331,7 @@ def structure(protein_id):
         'Uniprot Domains',
         'Uniprot Structure',
         'Macro Molecular',
+        'Exons',
     ]
     if has_activation_loops:
         tracks.insert(2, 'Activation Loops')

@@ -200,6 +200,18 @@ function StructureViewer(protein_data) {
         strand: '#E69F00',
         turn: '#CC79A7',
     };
+    this.exon_palette = [
+        '#4E79A7',
+        '#F28E2B',
+        '#76B7B2',
+        '#E15759',
+        '#59A14F',
+        '#EDC948',
+        '#B07AA1',
+        '#FF9DA7',
+        '#9C755F',
+        '#BAB0AC'
+    ];
     this.residue_colors = create_amino_acid_colors();
 
     var macro_residues = this.protein_data.seq.length <= this.show_residues_size_limit;
@@ -215,6 +227,7 @@ function StructureViewer(protein_data) {
 
     this.create_region_track(this.macro_viewer, "Uniprot Structure", "uniprot_structure")
     this.create_region_track(this.macro_viewer, "Macro Molecular", "macro_molecular")
+    this.create_region_track(this.macro_viewer, "Exons", "exons")
 
     this.macro_viewer.view_residues(0, protein_data.seq.length);
 
@@ -232,6 +245,7 @@ function StructureViewer(protein_data) {
 
     this.create_region_track(this.zoom_viewer, "Uniprot Structure", "uniprot_structure")
     this.create_region_track(this.zoom_viewer, "Macro Molecular", "macro_molecular")
+    this.create_region_track(this.zoom_viewer, "Exons", "exons")
 
     this.zoom_viewer.hide();
     this.zoom_enabled = false;
@@ -373,13 +387,65 @@ StructureViewer.prototype.create_ncbi_domain_track = function(track_viewer) {
 StructureViewer.prototype.create_region_track = function(track_viewer, name, region_name) {
     region_track = new RegionTrack(name, track_viewer.viewer, this.protein_data);
 
-    var color_fn = this.region_colors;
+    var fallback_region_colors = this.region_colors;
+    var color_fn = function(region) {
+        return fallback_region_colors(region.label);
+    };
+    if (region_name === 'macro_molecular') {
+        var macro_regions = ((this.protein_data.regions || {})[region_name]) || [];
+        var macro_labels = [];
+        for (var i = 0; i < macro_regions.length; i++) {
+            var label = macro_regions[i].label;
+            if (label && macro_labels.indexOf(label) === -1) {
+                macro_labels.push(label);
+            }
+        }
+
+        if (macro_labels.length) {
+            var macro_palette = [
+                '#4E79A7',
+                '#F28E2B',
+                '#E15759',
+                '#76B7B2',
+                '#59A14F',
+                '#EDC948',
+                '#B07AA1',
+                '#FF9DA7',
+                '#9C755F',
+                '#BAB0AC'
+            ];
+            var macro_region_colors = {};
+            for (var j = 0; j < macro_labels.length; j++) {
+                macro_region_colors[macro_labels[j]] = macro_palette[j % macro_palette.length];
+            }
+
+            color_fn = function(region) {
+                return macro_region_colors[region.label] || fallback_region_colors(region.label);
+            };
+        }
+    }
+
+    if (region_name === 'exons') {
+        var exon_palette = this.exon_palette;
+        var exon_regions = ((this.protein_data.regions || {})[region_name]) || [];
+        var exon_color_map = {};
+        for (var k = 0; k < exon_regions.length; k++) {
+            var exon_label = exon_regions[k].label;
+            if (exon_label && !exon_color_map[exon_label]) {
+                exon_color_map[exon_label] = exon_palette[Object.keys(exon_color_map).length % exon_palette.length];
+            }
+        }
+
+        color_fn = function(region) {
+            return exon_color_map[region.label] || exon_palette[0];
+        };
+    }
+
     if (region_name === 'uniprot_structure') {
         var structure_colors = this.uniprot_structure_colors;
-        var fallback_region_colors = this.region_colors;
-        color_fn = function(label) {
-            var key = String(label || '').toLowerCase();
-            return structure_colors[key] || fallback_region_colors(label);
+        color_fn = function(region) {
+            var key = String(region.label || '').toLowerCase();
+            return structure_colors[key] || fallback_region_colors(region.label);
         };
     }
 

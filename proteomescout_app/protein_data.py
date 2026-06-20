@@ -182,6 +182,49 @@ def parse_interpro_domains(domain_string):
     return domains
 
 
+def parse_exons(exon_string):
+    if not exon_string or pd.isna(exon_string):
+        return []
+
+    exons = []
+    for exon_entry in str(exon_string).split(';'):
+        exon_entry = exon_entry.strip()
+        if not exon_entry:
+            continue
+
+        parts = exon_entry.split(':')
+        if len(parts) != 4:
+            continue
+
+        exon_id = parts[0].strip()
+        if not exon_id:
+            continue
+
+        tail_value = parts[3].strip().lower()
+        if tail_value not in {'0', '1', 'true', 'false', 'yes', 'no'}:
+            continue
+
+        try:
+            start = float(parts[1])
+            stop = float(parts[2])
+        except ValueError:
+            continue
+
+        constitutive = tail_value in {'1', 'true', 'yes'}
+
+        exons.append(
+            {
+                'exon_id': exon_id,
+                'label': exon_id,
+                'start': start,
+                'stop': stop,
+                'constitutive': constitutive,
+            }
+        )
+
+    return sorted(exons, key=lambda item: item['start'])
+
+
 def parse_structure(structure_string):
     if not structure_string or pd.isna(structure_string):
         return []

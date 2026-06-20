@@ -592,7 +592,9 @@ DomainTrack.prototype.update_display = function(axis, viewer_width) {
                 .attr('y', 0)
                 .attr('height', this.domain_height)
                 .attr('title', function(d) {
-                    return d.interpro_id ? d.label + ' (' + d.interpro_id + ')' : d.label;
+                    var boundaries = d.start + '-' + d.stop;
+                    var title = d.interpro_id ? d.label + ' (' + d.interpro_id + ')' : d.label;
+                    return title + ' ' + boundaries;
                 })
                 .style('fill', function(d) { return track.domain_colors( d.label ); } )
                 .style('stroke', "black")
@@ -603,6 +605,7 @@ DomainTrack.prototype.update_display = function(axis, viewer_width) {
                         var interproUrl = 'https://www.ebi.ac.uk/interpro/entry/InterPro/' + d.interpro_id + '/';
                         tooltip += '<br>InterPro ID: <a href="' + interproUrl + '" target="_blank" rel="noreferrer">' + d.interpro_id + '</a>';
                     }
+                    tooltip += '<br>' + d.start + '-' + d.stop;
                     mouseOverOpacity(this, tooltip);
                 })
                 .on('mousemove', function(d) { mouseMove(this); })
@@ -662,6 +665,75 @@ function RegionTrack(name, track_viewer, protein_data) {
         .text(name);
 };
 
+function getRegionTooltip(region) {
+    if (region.tooltip) {
+        return region.tooltip;
+    }
+
+    var region_boundaries = "{0}-{1}".format(region.start, region.stop);
+
+    if (region.exon_id) {
+        var exon_status = region.constitutive ? 'Constitutive' : 'Not constitutive';
+        return region.exon_id + "<br>" + exon_status + "<br>" + region_boundaries;
+    }
+
+    return "" + region.label + "<br>" + region_boundaries;
+}
+
+function getPatternSafeColorId(color) {
+    return String(color || '').replace(/[^a-zA-Z0-9]/g, '_');
+}
+
+function getTrackDefs(track) {
+    var svg = d3.select(track.g.node().ownerSVGElement);
+    var defs = svg.select('defs.track-pattern-defs');
+    if (defs.empty()) {
+        defs = svg.insert('defs', ':first-child').attr('class', 'track-pattern-defs');
+    }
+    return defs;
+}
+
+function ensureExonPattern(track, color) {
+    var pattern_id = '{0}_exon_hatch_{1}'.format(track.id, getPatternSafeColorId(color));
+    var defs = getTrackDefs(track);
+    var existing = defs.select('#' + pattern_id);
+    if (!existing.empty()) {
+        return 'url(#{0})'.format(pattern_id);
+    }
+
+    var pattern = defs.append('pattern')
+        .attr('id', pattern_id)
+        .attr('patternUnits', 'userSpaceOnUse')
+        .attr('width', 8)
+        .attr('height', 8);
+
+    pattern.append('rect')
+        .attr('width', 8)
+        .attr('height', 8)
+        .attr('fill', color);
+
+    pattern.append('path')
+        .attr('d', 'M-2,2 l4,-4 M0,8 l8,-8 M6,10 l4,-4')
+        .attr('stroke', 'rgba(20, 20, 20, 0.65)')
+        .attr('stroke-width', 1.2);
+
+    pattern.append('path')
+        .attr('d', 'M-2,6 l8,-8 M2,10 l8,-8')
+        .attr('stroke', 'rgba(255, 255, 255, 0.45)')
+        .attr('stroke-width', 1);
+
+    return 'url(#{0})'.format(pattern_id);
+}
+
+function getRegionFill(track, region) {
+    var base_color = track.region_colors(region);
+    if (region.exon_id && !region.constitutive) {
+        return ensureExonPattern(track, base_color);
+    }
+
+    return base_color;
+}
+
 RegionTrack.prototype.create = function(axis, viewer_width, region_colors, region_name) {
     var pfam_url = this.protein_data.pfam_url;
     this.protein_regions = $.extend(true, [], this.protein_data.regions[region_name]);
@@ -706,10 +778,10 @@ RegionTrack.prototype.update_display = function(axis, viewer_width) {
                 .attr('y', 0)
                 .attr('height', this.region_height)
                 .attr('title', function(d) { return d.label; })
-                .style('fill', function(d) { return track.region_colors( d.label ); } )
+                .style('fill', function(d) { return getRegionFill(track, d); } )
                 .style('stroke', "black")
                 .style('stroke-width', "1px")
-                .on('mouseover', function(d) { mouseOverOpacity(this, ("" + d.label)); })
+                .on('mouseover', function(d) { mouseOverOpacity(this, getRegionTooltip(d)); })
                 .on('mousemove', function(d) { mouseMove(this) ; })
                 .on('mouseout', function(d) { mouseOutOpacity(this); });
 
