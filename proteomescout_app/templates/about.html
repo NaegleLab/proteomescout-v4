@@ -117,14 +117,14 @@
   <main class="shell">
     <section class="card-block">
       <h1>About ProteomeScout</h1>
-      <p>ProteomeScout is a resource for exploring proteins and post-translational modifications. This minimal build keeps the flat-file protein viewer and KSTAR plotting workflows available without the legacy database-backed stack.</p>
+      <p>ProteomeScout is a resource for exploring proteins and post-translational modifications. This minimal build keeps the flat-file protein viewer and KSTAR tools workflows available without the legacy database-backed stack.</p>
     </section>
 
     <section class="card-block">
       <h2>Included tools</h2>
       <div class="link-list">
         <p><a href="{{ url_for('proteins.search') }}">Protein Search</a>: search the TSV-backed protein dataset and open the interactive viewer.</p>
-        <p><a href="{{ url_for('kstar.landing') }}">KSTAR Plotting</a>: upload activities and FPR tables to render kinase activity plots.</p>
+        <p><a href="{{ url_for('kstar.landing') }}">KSTAR Tools</a>: open plotting and dataset-prep workflows for KSTAR analyses.</p>
         <p><a href="{{ kstar_galaxy_url }}" target="_blank" rel="noreferrer">KSTAR Galaxy</a>: launch the Galaxy-hosted KSTAR calculate workflow.</p>
         <p><a href="{{ proteomescout_api_url }}" target="_blank" rel="noreferrer">ProteomeScoutAPI</a>: API client code and usage examples.</p>
         <p><a href="{{ documentation_url }}" target="_blank" rel="noreferrer">Viewer Documentation</a>: feature notes and usage guidance for the protein viewer.</p>

@@ -213,6 +213,9 @@
             <option value="auto" selected>Autodetect</option>
             <option value="manual">Manual override</option>
           </select>
+          <div class="form-text mt-1">
+            <strong>Autodetect</strong> infers format from the uploaded values. <strong>Manual override</strong> applies the format you select below.
+          </div>
         </div>
         <div class="col-lg-4">
           <label for="peptideFormat" class="form-label">Manual peptide format</label>
@@ -225,6 +228,15 @@
             <option value="lowercase_p">lowercase_p</option>
             <option value="centered_uppercase">centered_uppercase</option>
           </select>
+          <div class="form-text mt-1">
+            <strong>acceptable</strong>: lowercase s/t/y already present.
+            <strong>uppercase</strong>: unmodified uppercase peptide.
+            <strong>annotated</strong>: uses symbols like * or (Phospho).
+            <strong>maxquant_perc</strong>: probability-style parentheses.
+            <strong>unimod</strong>: contains UniMod tags.
+            <strong>lowercase_p</strong>: contains pS/pT/pY.
+            <strong>centered_uppercase</strong>: centered modified residue convention.
+          </div>
         </div>
         <div class="col-lg-4">
           <label class="form-label">Detected peptide format</label>

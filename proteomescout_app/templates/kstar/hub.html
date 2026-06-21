@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KSTAR Tools</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --teal: #009ca9;
+      --teal-dark: #007f89;
+      --ink: #1f2a36;
+      --line: #d8e8ec;
+    }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(0, 156, 169, 0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(217, 145, 66, 0.12), transparent 30%),
+        linear-gradient(180deg, #fbfcfd 0%, #f3f7f8 100%);
+      color: var(--ink);
+    }
+    .top-nav {
+      background: #ffffff;
+      border-bottom: 2px solid #d8e8ec;
+      box-shadow: 0 2px 8px rgba(22, 50, 70, 0.05);
+    }
+    .top-nav .inner,
+    .app-nav .inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0.15rem 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+    }
+    .brand img {
+      width: 108px;
+      height: 108px;
+      object-fit: contain;
+    }
+    .nav-links,
+    .app-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      flex-wrap: wrap;
+    }
+    .nav-pill,
+    .app-pill {
+      border: 1px solid #cfe4e8;
+      color: #1e3e4c;
+      text-decoration: none;
+      background: #f8fcfd;
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.97rem;
+      font-weight: 600;
+      line-height: 1.1;
+    }
+    .nav-pill:hover,
+    .app-pill:hover {
+      border-color: var(--teal);
+      color: var(--teal-dark);
+      background: #eef8fa;
+    }
+    .app-nav {
+      background: linear-gradient(180deg, #ffffff 0%, #f7fbfc 100%);
+      border-bottom: 1px solid #d8e8ec;
+    }
+    .page-shell {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .hero {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.2rem 1.3rem;
+      box-shadow: 0 14px 36px rgba(18, 42, 54, 0.04);
+      margin-bottom: 1rem;
+    }
+    .hero h1 {
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.35rem;
+    }
+    .tool-card {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 14px 36px rgba(18, 42, 54, 0.04);
+      padding: 1.15rem 1.2rem;
+      height: 100%;
+    }
+    .tool-card h2 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+    .tool-card .btn {
+      margin-top: 0.5rem;
+      font-weight: 700;
+    }
+    @media (max-width: 900px) {
+      .top-nav .inner,
+      .app-nav .inner {
+        display: block;
+      }
+      .nav-links,
+      .app-links {
+        margin-top: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  {% include 'includes/site_header.html' %}
+
+  <div class="container page-shell">
+    <section class="hero">
+      <h1>KSTAR</h1>
+      <p class="text-muted mb-0">
+        Choose a KSTAR workflow. Use plotting for activity/FPR result visualization,
+        or dataset prep to standardize phosphoproteomics input files.
+      </p>
+    </section>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="tool-card">
+          <h2><i class="bi bi-graph-up-arrow me-2"></i>KSTAR Plotting</h2>
+          <p class="text-muted">
+            Upload KSTAR activity and FPR result files and build publication-ready kinase activity plots.
+          </p>
+          <a class="btn btn-outline-primary" href="{{ url_for('kstar.plotting_landing') }}">Open Plotting</a>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="tool-card">
+          <h2><i class="bi bi-table me-2"></i>KSTAR Dataset Prep</h2>
+          <p class="text-muted">
+            Prepare phosphoproteomics datasets by converting accessions, formatting peptides,
+            and adding <strong>data:</strong> prefixes to quantitative columns.
+          </p>
+          <a class="btn btn-outline-success" href="{{ url_for('kstar.dataset_prep') }}">Open Dataset Prep</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -6,6 +6,11 @@ bp = Blueprint('kstar', __name__, url_prefix='/kstar')
 
 @bp.route('/')
 def landing():
+    return render_template('kstar/hub.html')
+
+
+@bp.route('/plotting')
+def plotting_landing():
     return render_template('kstar/landing.html')
 
 
