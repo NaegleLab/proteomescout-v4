@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KSTAR Dataset Prep</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --teal: #009ca9;
+      --teal-dark: #007f89;
+      --ink: #1f2a36;
+      --sand: #f7f2ea;
+      --line: #d8e8ec;
+    }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(0, 156, 169, 0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(217, 145, 66, 0.12), transparent 30%),
+        linear-gradient(180deg, #fbfcfd 0%, #f3f7f8 100%);
+      color: var(--ink);
+    }
+    .top-nav {
+      background: #ffffff;
+      border-bottom: 2px solid #d8e8ec;
+      box-shadow: 0 2px 8px rgba(22, 50, 70, 0.05);
+    }
+    .top-nav .inner,
+    .app-nav .inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0.15rem 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+    }
+    .brand img {
+      width: 108px;
+      height: 108px;
+      object-fit: contain;
+    }
+    .nav-links,
+    .app-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      flex-wrap: wrap;
+    }
+    .nav-pill,
+    .app-pill {
+      border: 1px solid #cfe4e8;
+      color: #1e3e4c;
+      text-decoration: none;
+      background: #f8fcfd;
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.97rem;
+      font-weight: 600;
+      line-height: 1.1;
+    }
+    .nav-pill:hover,
+    .app-pill:hover {
+      border-color: var(--teal);
+      color: var(--teal-dark);
+      background: #eef8fa;
+    }
+    .app-nav {
+      background: linear-gradient(180deg, #ffffff 0%, #f7fbfc 100%);
+      border-bottom: 1px solid #d8e8ec;
+    }
+    .page-shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .hero,
+    .prep-card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 14px 36px rgba(18, 42, 54, 0.04);
+    }
+    .hero {
+      padding: 1.25rem 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+    .prep-card {
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1rem;
+    }
+    .hero h1,
+    .prep-card h2 {
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .prep-card h2 {
+      font-size: 1.12rem;
+      margin-bottom: 1rem;
+    }
+    .btn-teal {
+      background: var(--teal);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.6rem 1.35rem;
+      font-weight: 700;
+    }
+    .btn-teal:hover {
+      background: var(--teal-dark);
+      color: #fff;
+    }
+    .btn-teal:disabled {
+      background: #a0cfd4;
+      cursor: not-allowed;
+    }
+    .helper-box {
+      background: var(--sand);
+      border: 1px solid #eadfcb;
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .select2-container .select2-selection--multiple {
+      min-height: 42px;
+      border: 1px solid #cfdfe3;
+      border-radius: 0.5rem;
+    }
+    @media (max-width: 900px) {
+      .top-nav .inner,
+      .app-nav .inner {
+        display: block;
+      }
+      .nav-links,
+      .app-links {
+        margin-top: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  {% include 'includes/site_header.html' %}
+
+  <div class="container page-shell">
+    <section class="hero">
+      <h1>KSTAR Dataset Prep</h1>
+      <p class="text-muted mb-0">
+        Upload a phosphoproteomic CSV or TSV, let ProteomeScout suggest the accession,
+        peptide, and numeric data columns, then export a cleaned file with UniProt accessions,
+        a formatted peptide column, and optional <strong>data:</strong> prefixes for selected data headers.
+      </p>
+    </section>
+
+    <div class="prep-card">
+      <h2><span class="badge bg-secondary me-2">1</span>Upload Dataset</h2>
+      <div class="mb-3">
+        <label for="datasetFile" class="form-label">Select CSV / TSV file:</label>
+        <input type="file" id="datasetFile" class="form-control" accept=".csv,.tsv,.txt" />
+        <div class="form-text">A header row is required. The preview will inspect the file after selection.</div>
+      </div>
+      <div id="uploadStatus" class="text-muted small"></div>
+    </div>
+
+    <div class="prep-card">
+      <h2><span class="badge bg-secondary me-2">2</span>Confirm Columns and Formatting</h2>
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <label for="accessionCol" class="form-label">Accession column</label>
+          <select id="accessionCol" class="form-select"></select>
+          <div class="form-text mt-1">Will be converted to UniProt accessions where possible.</div>
+        </div>
+        <div class="col-lg-4">
+          <label for="peptideCol" class="form-label">Peptide column</label>
+          <select id="peptideCol" class="form-select"></select>
+          <div class="form-text mt-1">Will be reformatted into lowercase phosphosite notation.</div>
+        </div>
+        <div class="col-lg-4">
+          <label for="taxonId" class="form-label">Taxon ID</label>
+          <input type="number" id="taxonId" class="form-control" value="9606" min="1" />
+          <div class="form-text mt-1">Only needed when accession mapping involves gene names.</div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-lg-4">
+          <label for="accessionSeparator" class="form-label">Multiple-accession separator</label>
+          <input type="text" id="accessionSeparator" class="form-control" placeholder="Auto-detect, or enter ; / ," />
+          <div class="form-text mt-1">Leave blank to auto-detect.</div>
+        </div>
+        <div class="col-lg-4 d-flex align-items-end">
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="keepIsoforms" />
+            <label class="form-check-label" for="keepIsoforms">Keep isoform suffixes</label>
+          </div>
+        </div>
+        <div class="col-lg-4 d-flex align-items-end">
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="removeUnmapped" checked />
+            <label class="form-check-label" for="removeUnmapped">Remove rows without mapped accessions</label>
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-4" />
+
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <label for="peptideMode" class="form-label">Peptide format mode</label>
+          <select id="peptideMode" class="form-select">
+            <option value="auto" selected>Autodetect</option>
+            <option value="manual">Manual override</option>
+          </select>
+          <div class="form-text mt-1">
+            <strong>Autodetect</strong> infers format from the uploaded values. <strong>Manual override</strong> applies the format you select below.
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <label for="peptideFormat" class="form-label">Manual peptide format</label>
+          <select id="peptideFormat" class="form-select" disabled>
+            <option value="acceptable">acceptable</option>
+            <option value="uppercase">uppercase</option>
+            <option value="annotated">annotated</option>
+            <option value="maxquant_perc">maxquant_perc</option>
+            <option value="unimod">unimod</option>
+            <option value="lowercase_p">lowercase_p</option>
+            <option value="centered_uppercase">centered_uppercase</option>
+          </select>
+          <div class="form-text mt-1">
+            <strong>acceptable</strong>: lowercase s/t/y already present.
+            <strong>uppercase</strong>: unmodified uppercase peptide.
+            <strong>annotated</strong>: uses symbols like * or (Phospho).
+            <strong>maxquant_perc</strong>: probability-style parentheses.
+            <strong>unimod</strong>: contains UniMod tags.
+            <strong>lowercase_p</strong>: contains pS/pT/pY.
+            <strong>centered_uppercase</strong>: centered modified residue convention.
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <label class="form-label">Detected peptide format</label>
+          <div class="helper-box" id="peptideSummary">Waiting for file preview.</div>
+        </div>
+      </div>
+
+      <div id="annotatedControls" class="row g-3 mt-1 hidden">
+        <div class="col-lg-4">
+          <label for="peptideIndicator" class="form-label">Annotation indicator</label>
+          <input type="text" id="peptideIndicator" class="form-control" placeholder="* or (Phospho)" />
+        </div>
+        <div class="col-lg-4 d-flex align-items-end">
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="peptideAfter" checked />
+            <label class="form-check-label" for="peptideAfter">Indicator appears after modified residue</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="prep-card">
+      <h2><span class="badge bg-secondary me-2">3</span>Data Columns</h2>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="prefixDataColumns" checked />
+        <label class="form-check-label" for="prefixDataColumns">
+          Prefix selected data columns with <strong>data:</strong>
+        </label>
+      </div>
+      <div id="dataColumnsContainer" class="mb-2">
+        <label for="dataColumns" class="form-label">Detected numeric columns</label>
+        <select id="dataColumns" class="form-select" multiple></select>
+        <div class="form-text mt-1">You can add or remove columns from this list before running the conversion.</div>
+      </div>
+      <div class="helper-box" id="dataSummary">No file loaded yet.</div>
+    </div>
+
+    <div class="prep-card">
+      <h2><span class="badge bg-secondary me-2">4</span>Run and Download</h2>
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-8">
+          <label for="outputName" class="form-label">Output file name</label>
+          <input type="text" id="outputName" class="form-control" placeholder="kstar_prepared.csv" />
+        </div>
+        <div class="col-lg-4 text-lg-end">
+          <button id="runBtn" class="btn btn-teal w-100" disabled>
+            <i class="bi bi-download me-1"></i>Prepare CSV
+          </button>
+        </div>
+      </div>
+      <div id="runStatus" class="mt-3 text-muted small"></div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      const ROUTES = {
+        preview: '{{ url_for("kstar.dataset_prep_preview") }}',
+        run: '{{ url_for("kstar.dataset_prep_run") }}',
+      };
+
+      const fileInput = document.getElementById('datasetFile');
+      const uploadStatus = document.getElementById('uploadStatus');
+      const runStatus = document.getElementById('runStatus');
+      const runBtn = document.getElementById('runBtn');
+      const accessionCol = document.getElementById('accessionCol');
+      const peptideCol = document.getElementById('peptideCol');
+      const taxonId = document.getElementById('taxonId');
+      const accessionSeparator = document.getElementById('accessionSeparator');
+      const peptideMode = document.getElementById('peptideMode');
+      const peptideFormat = document.getElementById('peptideFormat');
+      const annotatedControls = document.getElementById('annotatedControls');
+      const peptideIndicator = document.getElementById('peptideIndicator');
+      const peptideAfter = document.getElementById('peptideAfter');
+      const prefixDataColumns = document.getElementById('prefixDataColumns');
+      const dataColumns = document.getElementById('dataColumns');
+      const dataSummary = document.getElementById('dataSummary');
+      const peptideSummary = document.getElementById('peptideSummary');
+      const outputName = document.getElementById('outputName');
+      const dataColumnsContainer = document.getElementById('dataColumnsContainer');
+
+      let activeFile = null;
+
+      function initSelect(selectEl, placeholder) {
+        if ($(selectEl).hasClass('select2-hidden-accessible')) {
+          $(selectEl).select2('destroy');
+        }
+        $(selectEl).select2({ placeholder, width: '100%' });
+      }
+
+      function setSelectOptions(selectEl, values, selectedValue) {
+        selectEl.innerHTML = '';
+        values.forEach(value => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = value;
+          if (value === selectedValue) option.selected = true;
+          selectEl.appendChild(option);
+        });
+        $(selectEl).trigger('change');
+      }
+
+      function setMultiSelectOptions(selectEl, values, selectedValues) {
+        selectEl.innerHTML = '';
+        const selectedSet = new Set(selectedValues || []);
+        values.forEach(value => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = value;
+          if (selectedSet.has(value)) option.selected = true;
+          selectEl.appendChild(option);
+        });
+        $(selectEl).trigger('change');
+      }
+
+      function refreshPeptideControls() {
+        const manual = peptideMode.value === 'manual';
+        peptideFormat.disabled = !manual;
+        annotatedControls.classList.toggle('hidden', peptideFormat.value !== 'annotated' || !manual);
+        if (!manual) {
+          peptideFormat.value = 'acceptable';
+        }
+      }
+
+      function refreshDataControls() {
+        dataColumnsContainer.classList.toggle('hidden', !prefixDataColumns.checked);
+      }
+
+      function updateSummary(response) {
+        const accessionText = response.accessionColumn
+          ? `Suggested accession column: <strong>${response.accessionColumn}</strong>`
+          : 'No accession column was confidently detected.';
+        const peptideText = response.peptideColumn
+          ? `Suggested peptide column: <strong>${response.peptideColumn}</strong>`
+          : 'No peptide column was confidently detected.';
+        const formatText = response.peptideFormat
+          ? `Detected peptide format: <strong>${response.peptideFormat}</strong>`
+          : 'Detected peptide format: unavailable until a file is loaded.';
+        const indicatorText = response.peptideIndicator
+          ? `Indicator: <strong>${response.peptideIndicator}</strong> (${response.peptideAfter ? 'after' : 'before'} modified residue)`
+          : 'Indicator: not detected';
+
+        peptideSummary.innerHTML = `${formatText}<br>${indicatorText}<br>${accessionText}<br>${peptideText}`;
+        dataSummary.innerHTML = response.dataColumns && response.dataColumns.length
+          ? `Detected ${response.dataColumns.length} numeric-only data columns and preselected them. You can add or remove any other columns from the selector below.`
+          : 'No numeric-only data columns were detected.';
+
+        if (response.warnings && response.warnings.length) {
+          dataSummary.innerHTML += `<ul class="mt-2 mb-0 ps-3">${response.warnings.map(message => `<li>${message}</li>`).join('')}</ul>`;
+        }
+      }
+
+      function populateFromPreview(response) {
+        const columns = response.columns || [];
+        setSelectOptions(accessionCol, columns, response.accessionColumn || columns[0] || '');
+        setSelectOptions(peptideCol, columns, response.peptideColumn || columns[0] || '');
+        const allCandidateDataColumns = columns.filter(column => (
+          column !== (response.accessionColumn || '') &&
+          column !== (response.peptideColumn || '')
+        ));
+        setMultiSelectOptions(dataColumns, allCandidateDataColumns, response.dataColumns || []);
+
+        if (response.accessionSeparator) {
+          accessionSeparator.value = response.accessionSeparator;
+        }
+        peptideMode.value = 'auto';
+        if (response.peptideFormat) {
+          peptideFormat.value = response.peptideFormat;
+        }
+        if (response.peptideIndicator) {
+          peptideIndicator.value = response.peptideIndicator;
+        }
+        peptideAfter.checked = response.peptideAfter !== false;
+        prefixDataColumns.checked = (response.dataColumns || []).length > 0;
+        refreshPeptideControls();
+        refreshDataControls();
+        updateSummary(response);
+        runBtn.disabled = false;
+      }
+
+      async function previewDataset() {
+        if (!activeFile) return;
+        uploadStatus.innerHTML = '<span class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Inspecting file...</span>';
+        runBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('datasetFile', activeFile);
+
+        try {
+          const response = await fetch(ROUTES.preview, { method: 'POST', body: formData });
+          const payload = await response.json();
+          if (!response.ok) {
+            throw new Error(payload.error || 'Preview failed.');
+          }
+
+          populateFromPreview(payload);
+          uploadStatus.innerHTML = `<span class="text-success">Loaded ${payload.rowCount} rows and ${payload.columnCount} columns from <strong>${activeFile.name}</strong>.</span>`;
+          runStatus.textContent = '';
+        } catch (error) {
+          uploadStatus.innerHTML = `<span class="text-danger">${error.message}</span>`;
+        }
+      }
+
+      async function runPrep() {
+        if (!activeFile) return;
+
+        const formData = new FormData();
+        formData.append('datasetFile', activeFile);
+        formData.append('accessionCol', accessionCol.value);
+        formData.append('peptideCol', peptideCol.value);
+        formData.append('taxonId', taxonId.value || '9606');
+        formData.append('accessionSeparator', accessionSeparator.value.trim());
+        formData.append('keepIsoforms', document.getElementById('keepIsoforms').checked ? '1' : '0');
+        formData.append('removeUnmapped', document.getElementById('removeUnmapped').checked ? '1' : '0');
+        formData.append('peptideMode', peptideMode.value);
+        formData.append('peptideFormat', peptideFormat.value);
+        formData.append('peptideIndicator', peptideIndicator.value.trim());
+        formData.append('peptideAfter', peptideAfter.checked ? '1' : '0');
+        formData.append('prefixDataColumns', prefixDataColumns.checked ? '1' : '0');
+        Array.from(dataColumns.selectedOptions).forEach(option => {
+          formData.append('dataColumns', option.value);
+        });
+
+        runBtn.disabled = true;
+        runStatus.innerHTML = '<span class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Preparing CSV...</span>';
+
+        try {
+          const response = await fetch(ROUTES.run, { method: 'POST', body: formData });
+          if (!response.ok) {
+            const payload = await response.json();
+            throw new Error(payload.error || 'Preparation failed.');
+          }
+
+          const blob = await response.blob();
+          const fileName = outputName.value.trim() || 'kstar_prepared.csv';
+          const downloadUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = fileName.endsWith('.csv') ? fileName : `${fileName}.csv`;
+          document.body.appendChild(link);
+          link.click();
+          URL.revokeObjectURL(downloadUrl);
+          link.remove();
+          runStatus.innerHTML = '<span class="text-success">Your prepared CSV has been downloaded.</span>';
+        } catch (error) {
+          runStatus.innerHTML = `<span class="text-danger">${error.message}</span>`;
+        } finally {
+          runBtn.disabled = false;
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        initSelect(accessionCol, 'Select accession column');
+        initSelect(peptideCol, 'Select peptide column');
+        initSelect(dataColumns, 'Select data columns');
+
+        refreshPeptideControls();
+        refreshDataControls();
+
+        fileInput.addEventListener('change', () => {
+          activeFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+          if (!activeFile) {
+            uploadStatus.textContent = '';
+            runBtn.disabled = true;
+            return;
+          }
+          outputName.value = `${activeFile.name.replace(/\.(csv|tsv|txt)$/i, '')}_kstar_prepared.csv`;
+          previewDataset();
+        });
+
+        peptideMode.addEventListener('change', refreshPeptideControls);
+        peptideFormat.addEventListener('change', refreshPeptideControls);
+        prefixDataColumns.addEventListener('change', refreshDataControls);
+        runBtn.addEventListener('click', runPrep);
+      });
+    })();
+  </script>
+</body>
+</html>

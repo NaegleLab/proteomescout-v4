@@ -250,6 +250,8 @@ function StructureViewer(protein_data) {
     this.zoom_viewer.hide();
     this.zoom_enabled = false;
 
+    this.autohide_empty_tracks();
+
     this.set_viewer_height(this.get_current_height(), function() {}, 0);
 
     var viewer = this;
@@ -340,6 +342,7 @@ StructureViewer.prototype.create_ptm_track = function(track_viewer) {
     console.log("in StructureViewer creating PTMTrack")
     ptm_track = new PTMTrack('PTMs', track_viewer.viewer, this.protein_data);
     ptm_track.create(track_viewer.axis, this.width, this.residue_colors);
+    ptm_track.has_content = Object.keys(this.protein_data.mods || {}).length > 0;
     track_viewer.add_track(ptm_track);
 };
 
@@ -364,17 +367,16 @@ StructureViewer.prototype.create_residue_track = function(track_viewer, show_res
 
 StructureViewer.prototype.create_activation_loop_track = function(track_viewer) {
     var loops = (this.protein_data.regions || {}).activation_loops || [];
-    if (!loops.length) {
-        return;
-    }
     region_track = new RegionTrack('Activation Loops', track_viewer.viewer, this.protein_data);
     region_track.create(track_viewer.axis, this.width, this.region_colors, 'activation_loops');
+    region_track.has_content = loops.length > 0;
     track_viewer.add_track(region_track);
 };
 
 StructureViewer.prototype.create_uniprot_domain_track = function(track_viewer) {
     region_track = new RegionTrack('Uniprot Domains', track_viewer.viewer, this.protein_data);
     region_track.create(track_viewer.axis, this.width, this.region_colors, 'uniprot_domains');
+    region_track.has_content = (((this.protein_data.regions || {}).uniprot_domains) || []).length > 0;
     track_viewer.add_track(region_track);
 };
 
@@ -450,18 +452,37 @@ StructureViewer.prototype.create_region_track = function(track_viewer, name, reg
     }
 
     region_track.create(track_viewer.axis, this.width, color_fn, region_name);
+    region_track.has_content = (((this.protein_data.regions || {})[region_name]) || []).length > 0;
     track_viewer.add_track(region_track);
 };
 
 StructureViewer.prototype.create_domain_track = function(track_viewer) {
     domain_track = new DomainTrack('Interpro Domains', track_viewer.viewer, this.protein_data);
     domain_track.create(track_viewer.axis, this.width, this.domain_colors);
+    domain_track.has_content = ((this.protein_data.domains || []).length > 0);
     track_viewer.add_track(domain_track);
 };
 
 StructureViewer.prototype.create_empty_track = function(track_viewer) {
     empty_track = new EmptyTrack('None', track_viewer.viewer, this.protein_data);
     track_viewer.add_track(empty_track);
+};
+
+StructureViewer.prototype.track_has_content = function(track_name) {
+    var track = this.macro_viewer.get_track(track_name);
+    return !!(track && track.has_content);
+};
+
+StructureViewer.prototype.autohide_empty_tracks = function() {
+    var viewer = this;
+
+    $('.tracks input.tracktoggle').each(function() {
+        var track_name = $(this).attr('id');
+        if (!viewer.track_has_content(track_name) && $(this).is(':checked')) {
+            $(this).prop('checked', false);
+            viewer.toggle_track(track_name, false);
+        }
+    });
 };
 
 
@@ -562,6 +583,10 @@ StructureViewer.prototype.toggle_exp = function(exp_id, mode){
 }
 
 StructureViewer.prototype.toggle_track = function(track_name, mode){
+    if (!this.macro_viewer || !this.zoom_viewer) {
+        return;
+    }
+
     t = this.svg_container.transition()
               .duration(this.transition_duration);
 

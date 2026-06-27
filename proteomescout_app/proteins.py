@@ -332,9 +332,8 @@ def structure(protein_id):
         'Uniprot Structure',
         'Macro Molecular',
         'Exons',
+        'Activation Loops',
     ]
-    if has_activation_loops:
-        tracks.insert(2, 'Activation Loops')
 
     return render_template(
         'proteins/structure.html',

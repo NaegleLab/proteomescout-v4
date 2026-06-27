@@ -225,7 +225,7 @@
       </div>
       <div class="menu-circles">
         <a class="menu-circle search" href="{{ url_for('proteins.search') }}" title="Find proteins from the TSV repository and open the interactive sequence/structure viewer.">Search<br>Proteins</a>
-        <a class="menu-circle kstar" href="{{ url_for('kstar.landing') }}" title="Upload activities and FPR tables to generate publication-ready KSTAR visualizations.">KSTAR<br>Plotting</a>
+        <a class="menu-circle kstar" href="{{ url_for('kstar.landing') }}" title="Open KSTAR tools for plotting and phosphoproteomic dataset preparation.">KSTAR<br>Tools</a>
         <a class="menu-circle kstar-galaxy" href="https://usegalaxy.org/?tool_id=toolshed.g2.bx.psu.edu%2Frepos%2Fnaegle_lab%2Fkstar_calculate%2Fkstar_calculate%2F1.1.0&amp;version=latest" target="_blank" rel="noreferrer" title="Launch the KSTAR calculate tool in Galaxy.">KSTAR<br>Galaxy</a>
         <a class="menu-circle statistics" href="{{ url_for('statistics') }}" title="View species-level protein and PTM summaries from the configured data.tsv file.">Statistics</a>
         <span class="menu-circle spacer" aria-hidden="true"></span>
@@ -236,7 +236,7 @@
 
     <section class="desc">
       <p>ProteomeScout is a resource for proteins and post-translational modifications (PTMs).</p>
-      <p>This minimal build focuses on TSV-backed protein search/viewing and KSTAR plotting.</p>
+      <p>This minimal build focuses on TSV-backed protein search/viewing and KSTAR tools.</p>
       <p>Getting started: explore <a href="{{ url_for('proteins.structure', protein_id=52355) }}">EGFR (52355)</a>.</p>
     </section>
   </main>
