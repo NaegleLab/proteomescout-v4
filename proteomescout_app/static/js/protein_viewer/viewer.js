@@ -219,6 +219,7 @@ function StructureViewer(protein_data) {
     this.create_empty_track(this.macro_viewer);
     this.create_ptm_track(this.macro_viewer);
     this.create_residue_track(this.macro_viewer, this.show_residues_size_limit >= this.protein_data.seq.length);
+    this.create_spyc_predictions_track(this.macro_viewer);
 
     this.create_activation_loop_track(this.macro_viewer);
     this.create_uniprot_domain_track(this.macro_viewer);
@@ -237,6 +238,7 @@ function StructureViewer(protein_data) {
     this.create_empty_track(this.zoom_viewer);
     this.create_ptm_track(this.zoom_viewer);
     this.create_residue_track(this.zoom_viewer, true);
+    this.create_spyc_predictions_track(this.zoom_viewer);
     
     this.create_activation_loop_track(this.zoom_viewer);
     this.create_uniprot_domain_track(this.zoom_viewer);
@@ -344,6 +346,13 @@ StructureViewer.prototype.create_ptm_track = function(track_viewer) {
     ptm_track.create(track_viewer.axis, this.width, this.residue_colors);
     ptm_track.has_content = Object.keys(this.protein_data.mods || {}).length > 0;
     track_viewer.add_track(ptm_track);
+};
+
+StructureViewer.prototype.create_spyc_predictions_track = function(track_viewer) {
+    var spyc_track = new SpyCPredictionTrack('Spy-C Predictions', track_viewer.viewer, this.protein_data);
+    spyc_track.create(track_viewer.axis, this.width);
+    spyc_track.has_content = Object.keys(this.protein_data.spyc_predictions || {}).length > 0;
+    track_viewer.add_track(spyc_track);
 };
 
 StructureViewer.prototype.create_mutation_track = function(track_viewer, show_residues) {

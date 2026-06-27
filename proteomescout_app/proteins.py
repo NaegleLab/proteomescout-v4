@@ -1,4 +1,6 @@
 import json
+import math
+import re
 
 from flask import Blueprint, abort, current_app, render_template, request, url_for
 
@@ -22,8 +24,86 @@ from proteomescout_app.protein_data import (
 bp = Blueprint('proteins', __name__, url_prefix='/proteins')
 
 
+SPYC_SITE_POSITION_RE = re.compile(r'(\d+)')
+
+
 def format_scansite_predictions(_protein):
     return {}
+
+
+def _to_probability(value):
+    text = str(value or '').strip()
+    if not text:
+        return None
+    lowered = text.lower()
+    if lowered in {'nan', 'none', 'null', 'na', 'n/a'}:
+        return None
+
+    try:
+        probability = float(text)
+    except ValueError:
+        return None
+
+    if math.isnan(probability):
+        return None
+
+    return max(0.0, min(1.0, probability))
+
+
+def _parse_spyc_position(site_token):
+    token = str(site_token or '').strip()
+    if not token:
+        return None
+
+    match = SPYC_SITE_POSITION_RE.search(token)
+    if not match:
+        return None
+
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return None
+
+
+def format_spyc_predictions(protein):
+    predictions = {}
+
+    raw_predictions = str(protein.get('spyc_predictions', '') or '').strip()
+    if not raw_predictions:
+        return predictions
+
+    for entry in raw_predictions.split(';'):
+        entry = entry.strip()
+        if not entry:
+            continue
+
+        parts = [part.strip() for part in entry.split(':')]
+        if len(parts) < 4:
+            continue
+
+        # Site tokens may include residue letters (e.g., S123), so extract digits.
+        site_token = ':'.join(parts[:-3])
+        position = _parse_spyc_position(site_token)
+        if position is None:
+            continue
+
+        prediction_class = parts[-2]
+        confidence = parts[-1]
+        probability = _to_probability(parts[-3])
+
+        prediction = {
+            'site': site_token,
+            'position': position,
+            'probability': probability,
+            'class': prediction_class,
+            'confidence': confidence,
+        }
+
+        existing = predictions.get(position)
+        if existing is None or (existing.get('probability') is None and probability is not None):
+            predictions[position] = prediction
+
+    return predictions
 
 
 def format_protein_mutations(_protein):
@@ -313,6 +393,7 @@ def structure(protein_id):
         'seq': protein.get('sequence', ''),
         'domains': format_protein_domains(protein),
         'mods': formatted_mods,
+        'spyc_predictions': format_spyc_predictions(protein),
         'mutations': format_protein_mutations(protein),
         'regions': protein_regions,
         'mod_types': formatted_mod_types,
@@ -328,6 +409,7 @@ def structure(protein_id):
     tracks = [
         'Interpro Domains',
         'PTMs',
+        'Spy-C Predictions',
         'Uniprot Domains',
         'Uniprot Structure',
         'Macro Molecular',
