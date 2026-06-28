@@ -118,11 +118,13 @@ function get_site_context_sections(k, protein_data) {
         domains: [],
         secondary_structure: [],
         macromolecular_region: [],
+        ensembl_exons: [],
     };
     var seen = {
         domains: {},
         secondary_structure: {},
         macromolecular_region: {},
+        ensembl_exons: {},
     };
 
     function add_unique(section_name, label) {
@@ -172,6 +174,14 @@ function get_site_context_sections(k, protein_data) {
         }
     }
 
+    var exons = regions.exons || [];
+    for (var ei in exons) {
+        var exon = exons[ei];
+        if (exon.start <= k && k <= exon.stop) {
+            add_unique('ensembl_exons', exon.exon_id || exon.label);
+        }
+    }
+
     return sections;
 }
 
@@ -189,6 +199,49 @@ function build_peptide_html(peptide) {
     return text.substring(0, center)
         + '<strong class="ptm-center">' + text.charAt(center) + '</strong>'
         + text.substring(center + 1);
+}
+
+function get_spyc_prediction_summary_text(prediction) {
+    if (!prediction) {
+        return '';
+    }
+
+    var confidence_raw = String(prediction.confidence || '').trim();
+    var confidence = confidence_raw.toLowerCase();
+    var class_raw = String(prediction['class'] || '').trim();
+    var class_lower = class_raw.toLowerCase();
+    var numeric_confidence = parseFloat(confidence_raw);
+    var has_numeric_confidence = !isNaN(numeric_confidence);
+
+    // Training set encoding: confidence 0/1 marks negatives/positives.
+    if (has_numeric_confidence && numeric_confidence === 1) {
+        return 'Training Set - Binder';
+    }
+    if (has_numeric_confidence && numeric_confidence === 0) {
+        return 'Training Set - Non-binder';
+    }
+
+    if (confidence.indexOf('low') >= 0) {
+        return 'Low Confidence - Near Prediction Boundary';
+    }
+
+    var looks_non_binder =
+        class_raw === '0'
+        || (class_lower.indexOf('non') >= 0 && class_lower.indexOf('bind') >= 0)
+        || (confidence.indexOf('non') >= 0 && confidence.indexOf('bind') >= 0);
+    if (looks_non_binder) {
+        return 'High Confidence Non-Binder';
+    }
+
+    var looks_binder =
+        class_raw === '1'
+        || (class_lower.indexOf('bind') >= 0 && class_lower.indexOf('non') < 0)
+        || (confidence.indexOf('bind') >= 0 && confidence.indexOf('non') < 0);
+    if (looks_binder) {
+        return 'High Confidence Binder';
+    }
+
+    return 'Low Confidence - Near Prediction Boundary';
 }
 
 function build_ptm_table(k, mods, protein_data) {
@@ -221,6 +274,14 @@ function build_ptm_table(k, mods, protein_data) {
 
     var site_context = get_site_context_sections(k, protein_data);
 
+    var spyc_predictions = protein_data.spyc_predictions || {};
+    var spyc_prediction = spyc_predictions[k] || spyc_predictions[String(k)] || null;
+    if (spyc_prediction) {
+        var spyc_row = summary.append('p').attr('class', 'ptm-site-context');
+        spyc_row.append('span').attr('class', 'ptm-site-label').text('Predicted to Bind to SH2 domains: ');
+        spyc_row.append('span').text(get_spyc_prediction_summary_text(spyc_prediction));
+    }
+
     var domains_row = summary.append('p').attr('class', 'ptm-site-context');
     domains_row.append('span').attr('class', 'ptm-site-label').text('Site falls within - Domains: ');
     domains_row.append('span').text(site_context.domains.length ? site_context.domains.join(' | ') : 'None');
@@ -236,6 +297,14 @@ function build_ptm_table(k, mods, protein_data) {
     macro_row.append('span').text(
         site_context.macromolecular_region.length ? site_context.macromolecular_region.join(' | ') : 'None'
     );
+
+    var exon_row = summary.append('p').attr('class', 'ptm-site-context');
+    exon_row.append('span').attr('class', 'ptm-site-label').text('Within Ensembl Exon: ');
+    exon_row.append('span').text(
+        site_context.ensembl_exons.length ? site_context.ensembl_exons.join(' | ') : 'None'
+    );
+
+
 
     var table = metadata.append('table')
         .attr('id', 'peptide_table')
