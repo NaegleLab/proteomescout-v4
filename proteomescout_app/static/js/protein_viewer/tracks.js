@@ -417,13 +417,15 @@ PTMTrack.prototype.update_display = function(axis, viewer_width) {
                 .on('click', function(d) { build_ptm_table(d.key, d.value, ptm_viewer.protein_data); });
 };
 
-function SpyCPredictionTrack(name, track_viewer, protein_data) {
+function SpyCPredictionTrack(name, track_viewer, protein_data, options) {
     init_track(this, name, track_viewer, protein_data);
+
+    options = options || {};
 
     this.height = 56;
     this.center_y = 30;
-    this.min_radius = 1.0;
-    this.max_radius = 4.0;
+    this.min_radius = typeof options.min_radius === 'number' ? options.min_radius : 3.0;
+    this.max_radius = typeof options.max_radius === 'number' ? options.max_radius : 6.6;
     this.max_offset = 10;
 
     this.g.append('text')

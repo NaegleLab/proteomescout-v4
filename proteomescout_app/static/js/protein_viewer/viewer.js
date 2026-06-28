@@ -349,7 +349,11 @@ StructureViewer.prototype.create_ptm_track = function(track_viewer) {
 };
 
 StructureViewer.prototype.create_spyc_predictions_track = function(track_viewer) {
-    var spyc_track = new SpyCPredictionTrack('Spy-C Predictions', track_viewer.viewer, this.protein_data);
+    var size_options = track_viewer === this.zoom_viewer
+        ? { min_radius: 4.0, max_radius: 9.0 }
+        : { min_radius: 3.0, max_radius: 6.6 };
+
+    var spyc_track = new SpyCPredictionTrack('Spy-C Predictions', track_viewer.viewer, this.protein_data, size_options);
     spyc_track.create(track_viewer.axis, this.width);
     spyc_track.has_content = Object.keys(this.protein_data.spyc_predictions || {}).length > 0;
     track_viewer.add_track(spyc_track);
