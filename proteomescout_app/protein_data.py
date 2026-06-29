@@ -329,6 +329,42 @@ def _normalize(value):
     return str(value or '').strip().lower()
 
 
+def _citation_is_current(citation):
+    # Older citation TSV files may not have a Current/current column.
+    if 'Current' not in citation and 'current' not in citation:
+        return True
+
+    raw_value = citation.get('Current', citation.get('current', ''))
+    current_value = str(raw_value).strip().lower()
+    if current_value in {'', 'nan', 'none'}:
+        return True
+    return current_value in {'true', '1', 'yes', 'y'}
+
+
+def _modification_has_current_evidence(evidence_entry):
+    text = str(evidence_entry or '').strip()
+    if not text:
+        # Keep legacy compatibility for rows missing aligned evidence.
+        return True
+
+    experiment_ids = [item.strip() for item in text.split(',') if item.strip()]
+    if not experiment_ids:
+        return True
+
+    saw_citation = False
+    for experiment_id in experiment_ids:
+        citation = get_citation_by_id(experiment_id)
+        if citation is None:
+            continue
+
+        saw_citation = True
+        if _citation_is_current(citation):
+            return True
+
+    # Exclude only when every resolved citation is explicitly non-current.
+    return not saw_citation
+
+
 def _ptm_record_count(protein):
     mod_text = str(protein.get('modifications', '') or '').strip()
     if not mod_text:
@@ -416,7 +452,14 @@ def _collect_species_ptm_totals():
         bucket['protein_count'] += 1
 
         activation_loops = parse_activation_loops(protein.get('activation_loop', ''))
-        for modification in parse_modifications(protein.get('modifications', '')):
+        modifications = parse_modifications(protein.get('modifications', ''))
+        evidence_entries = parse_site_evidence_entries(protein.get('evidence', ''))
+
+        for index, modification in enumerate(modifications):
+            evidence_entry = evidence_entries[index] if index < len(evidence_entries) else ''
+            if not _modification_has_current_evidence(evidence_entry):
+                continue
+
             ptm_type = str(modification.get('modification', '') or '').strip() or 'Unspecified'
             bucket['ptm_count'] += 1
             bucket['ptm_type_counts'][ptm_type] += 1
