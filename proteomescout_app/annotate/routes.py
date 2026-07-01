@@ -82,31 +82,49 @@ def get_columns():
         return jsonify({'error': f'Could not parse file: {exc}'}), 400
 
 
-# Columns that annotate_dataset() will append to the DataFrame.
-_ANNOTATION_COLUMNS = {
-    'gene_name', 'domains', 'domain_architecture', 'GO_terms', 'PScout_Errors',
-    'modification_sites', 'aligned_peps', 'documented_phosphosites',
-    'site_in_domain', 'site_in_macro', 'site_in_activation_loop',
-}
+def _resolve_annotation_duplicates(df: pd.DataFrame) -> list[str]:
+    """Rename duplicate columns after API annotation while keeping annotation names intact.
 
-
-def _resolve_column_conflicts(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
-    """Rename any input columns that would clash with annotation output columns.
-
-    Returns the (possibly renamed) DataFrame and a list of warning messages
-    describing each rename so the caller can surface them to the user.
+    The annotation DataFrame is concatenated to the right of user columns, so for
+    duplicate names the rightmost entry is the API-generated annotation value.
+    We preserve that rightmost column name and rename earlier columns to
+    '<name>_original', '<name>_original_2', etc.
     """
-    conflicts = _ANNOTATION_COLUMNS & set(df.columns)
-    if not conflicts:
-        return df, []
+    columns = list(df.columns)
+    name_to_positions = {}
+    for idx, name in enumerate(columns):
+        name_to_positions.setdefault(name, []).append(idx)
 
-    rename_map = {col: f'{col}_original' for col in conflicts}
-    warnings = [
-        f"Column '{col}' already exists and has been renamed to '{rename_map[col]}' "
-        f"to avoid overwriting your data."
-        for col in sorted(conflicts)
-    ]
-    return df.rename(columns=rename_map), warnings
+    warnings = []
+    used_names = set(columns)
+    for name, positions in name_to_positions.items():
+        if len(positions) <= 1:
+            continue
+
+        # Keep the rightmost duplicate as the API annotation column.
+        original_positions = positions[:-1]
+        rename_targets = []
+        for sequence, position in enumerate(original_positions, start=1):
+            suffix = '' if sequence == 1 else f'_{sequence}'
+            candidate = f'{name}_original{suffix}'
+            while candidate in used_names:
+                sequence += 1
+                candidate = f'{name}_original_{sequence}'
+            columns[position] = candidate
+            used_names.add(candidate)
+            rename_targets.append(candidate)
+
+        if rename_targets:
+            warnings.append(
+                f"Column '{name}' already existed in the upload. Preserved original column(s) as "
+                + ', '.join(f"'{target}'" for target in rename_targets)
+                + "."
+            )
+
+    if warnings:
+        df.columns = columns
+
+    return warnings
 
 
 def _build_accession_loop_map():
@@ -170,11 +188,6 @@ def run_annotation():
         logger.warning('run_annotation file parse error: %s', exc)
         return jsonify({'error': f'Could not parse file: {exc}'}), 400
 
-    df, conflict_warnings = _resolve_column_conflicts(df)
-    if conflict_warnings:
-        for msg in conflict_warnings:
-            logger.info('Column conflict resolved: %s', msg)
-
     _configure_api_data_dir()
 
     try:
@@ -195,7 +208,17 @@ def run_annotation():
         logger.exception('Annotation failed unexpectedly')
         return jsonify({'error': 'Annotation failed due to an internal error. Please contact the administrator.'}), 500
 
-    if find_site and 'modification_sites' in dataset.dataset.columns:
+    conflict_warnings = _resolve_annotation_duplicates(dataset.dataset)
+    if conflict_warnings:
+        for msg in conflict_warnings:
+            logger.info('Column conflict resolved: %s', msg)
+
+    # Backfill legacy activation-loop flag only when API did not provide one.
+    if (
+        find_site
+        and 'modification_sites' in dataset.dataset.columns
+        and 'site_in_activation_loop' not in dataset.dataset.columns
+    ):
         _add_activation_loop_column(dataset.dataset, accession_col)
 
     out = io.StringIO()
