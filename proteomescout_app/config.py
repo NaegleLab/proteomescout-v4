@@ -3,6 +3,7 @@ import os
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'tsv-proteomescout-dev-key')
+    PROTEOMESCOUT_WEB_VERSION = os.environ.get('PROTEOMESCOUT_WEB_VERSION', 'v4')
     DATA_ROOT_DIR = os.environ.get('PROTEOMESCOUT_DATA_DIR', 'data')
     PROTEIN_DATA_TSV_PATH = os.path.join(DATA_ROOT_DIR, 'data.tsv')
     CITATIONS_TSV_PATH = os.path.join(DATA_ROOT_DIR, 'citations.tsv')

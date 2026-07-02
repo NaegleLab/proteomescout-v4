@@ -1,7 +1,9 @@
 import os
 import re
+import json
 from csv import DictWriter
 from io import StringIO
+from importlib.metadata import PackageNotFoundError, version
 
 from flask import Flask, Response, abort, render_template, request, send_file, url_for
 
@@ -14,6 +16,66 @@ FILENAME_SANITIZE_RE = re.compile(r'[^A-Za-z0-9._-]+')
 
 def _normalize_species_key(value):
     return re.sub(r'[^a-z0-9]+', '', str(value or '').strip().lower())
+
+
+def _read_dependency_version_from_requirements(requirements_path, package_name):
+    if not os.path.isfile(requirements_path):
+        return None
+
+    requirement_re = re.compile(
+        rf'^\s*{re.escape(package_name)}\s*([<>=!~].+)?\s*$',
+        re.IGNORECASE,
+    )
+    with open(requirements_path, 'r', encoding='utf-8') as handle:
+        for raw_line in handle:
+            line = raw_line.split('#', 1)[0].strip()
+            if not line:
+                continue
+            match = requirement_re.match(line)
+            if match:
+                spec = (match.group(1) or '').strip()
+                return f'{package_name}{spec}' if spec else package_name
+    return None
+
+
+def _get_proteomescout_api_version(app):
+    try:
+        return version('proteomeScoutAPI')
+    except PackageNotFoundError:
+        requirements_path = os.path.join(app.root_path, '..', 'requirements.txt')
+        requirement = _read_dependency_version_from_requirements(requirements_path, 'proteomeScoutAPI')
+        if requirement:
+            return f'{requirement} (requirements)'
+        return 'unknown'
+
+
+def _get_dataset_version(app):
+    data_root = os.path.abspath(app.config.get('DATA_ROOT_DIR', 'data'))
+    api_data_root = os.path.abspath(app.config.get('PROTEOMESCOUT_API_DATA_DIR', data_root))
+
+    metadata_candidates = [
+        os.path.join(data_root, 'metadata.json'),
+        os.path.join(api_data_root, 'ProteomeScout_Dataset', 'metadata.json'),
+        os.path.join(api_data_root, 'metadata.json'),
+    ]
+    for metadata_path in metadata_candidates:
+        if not os.path.isfile(metadata_path):
+            continue
+
+        try:
+            with open(metadata_path, 'r', encoding='utf-8') as handle:
+                metadata = json.load(handle)
+        except (OSError, ValueError, TypeError):
+            continue
+
+        if not isinstance(metadata, dict):
+            continue
+
+        value = str(metadata.get('version_number', '') or '').strip()
+        if value:
+            return value
+
+    return 'unknown'
 
 
 def _species_reference_dataset_dir(app):
@@ -113,6 +175,9 @@ def create_app(config_class=Config):
             ),
             proteomescout_api_url='https://github.com/NaegleLab/ProteomeScoutAPI',
             naegle_lab_url=app.config.get('NAEGLE_LAB_URL', '#'),
+            proteomescout_web_version=app.config.get('PROTEOMESCOUT_WEB_VERSION', 'v4'),
+            proteomescout_api_version=_get_proteomescout_api_version(app),
+            proteomescout_dataset_version=_get_dataset_version(app),
         )
 
     @app.route('/downloads')
