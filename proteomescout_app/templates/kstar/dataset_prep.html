@@ -276,14 +276,25 @@
 
     <div class="prep-card">
       <h2><span class="badge bg-secondary me-2">4</span>Run and Download</h2>
-      <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="annotatePrepared" />
-        <label class="form-check-label" for="annotatePrepared">
-          Integrate ProteomeScout annotation after preparation
+      <p class="text-muted small mb-3">
+        ProteomeScout annotation is always integrated after preparation.
+      </p>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="updateMaxCoverage" checked />
+        <label class="form-check-label" for="updateMaxCoverage">
+          Update accessions for maximal coverage
         </label>
-        <div class="form-text">
-          Uses prepared columns <strong>UniProt Accession</strong> and <strong>Formatted Peptide</strong>.
-          Adds annotation fields in the same output CSV.
+      </div>
+      <div class="row g-3 mb-3" id="coverageSpeciesRow">
+        <div class="col-lg-8">
+          <label for="coverageSpecies" class="form-label">Species</label>
+          <select id="coverageSpecies" class="form-select">
+            <option value="">— select —</option>
+            {% for species in species_options %}
+            <option value="{{ species }}">{{ species }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Required when maximal coverage is enabled.</div>
         </div>
       </div>
       <div class="row g-3 align-items-end">
@@ -332,6 +343,8 @@
       const peptideSummary = document.getElementById('peptideSummary');
       const outputName = document.getElementById('outputName');
       const dataColumnsContainer = document.getElementById('dataColumnsContainer');
+      const updateMaxCoverage = document.getElementById('updateMaxCoverage');
+      const coverageSpecies = document.getElementById('coverageSpecies');
 
       let activeFile = null;
 
@@ -378,6 +391,10 @@
 
       function refreshDataControls() {
         dataColumnsContainer.classList.toggle('hidden', !prefixDataColumns.checked);
+      }
+
+      function refreshCoverageControls() {
+        coverageSpecies.disabled = !updateMaxCoverage.checked;
       }
 
       function updateSummary(response) {
@@ -457,6 +474,10 @@
 
       async function runPrep() {
         if (!activeFile) return;
+        if (updateMaxCoverage.checked && !coverageSpecies.value) {
+          runStatus.innerHTML = '<span class="text-danger">Please select a species when maximal coverage is enabled.</span>';
+          return;
+        }
 
         const formData = new FormData();
         formData.append('datasetFile', activeFile);
@@ -470,7 +491,8 @@
         formData.append('peptideFormat', peptideFormat.value);
         formData.append('peptideIndicator', peptideIndicator.value.trim());
         formData.append('peptideAfter', peptideAfter.checked ? '1' : '0');
-        formData.append('annotatePrepared', document.getElementById('annotatePrepared').checked ? '1' : '0');
+        formData.append('updateMaxCoverage', updateMaxCoverage.checked ? '1' : '0');
+        formData.append('coverageSpecies', coverageSpecies.value);
         formData.append('prefixDataColumns', prefixDataColumns.checked ? '1' : '0');
         Array.from(dataColumns.selectedOptions).forEach(option => {
           formData.append('dataColumns', option.value);
@@ -511,6 +533,7 @@
 
         refreshPeptideControls();
         refreshDataControls();
+        refreshCoverageControls();
 
         fileInput.addEventListener('change', () => {
           activeFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
@@ -519,13 +542,14 @@
             runBtn.disabled = true;
             return;
           }
-          outputName.value = `${activeFile.name.replace(/\.(csv|tsv|txt)$/i, '')}_kstar_prepared.csv`;
+          outputName.value = `${activeFile.name.replace(/\.(csv|tsv|txt)$/i, '')}_kstar_prepared_annotated.csv`;
           previewDataset();
         });
 
         peptideMode.addEventListener('change', refreshPeptideControls);
         peptideFormat.addEventListener('change', refreshPeptideControls);
         prefixDataColumns.addEventListener('change', refreshDataControls);
+        updateMaxCoverage.addEventListener('change', refreshCoverageControls);
         runBtn.addEventListener('click', runPrep);
       });
     })();

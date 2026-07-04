@@ -22,6 +22,7 @@ from proteomescout_app.dataset_processing.peptides import (
     detect_most_common_format,
     format_peptide_from_df,
 )
+from proteomescout_app.protein_data import get_maximal_coverage_accession, get_species_options
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +219,8 @@ def _apply_uniprot_redirect_updates(df, accession_col, accession_out_col, id_sep
     - Updated Uniprot ID
     """
     log_col = 'UniProt ID Update Log'
-    df[log_col] = ''
+    if log_col not in df.columns:
+        df[log_col] = ''
 
     if accession_col not in df.columns or accession_out_col not in df.columns:
         return df
@@ -244,7 +246,8 @@ def _apply_uniprot_redirect_updates(df, accession_col, accession_out_col, id_sep
             continue
 
         df.at[idx, accession_out_col] = updated_acc
-        df.at[idx, log_col] = 'Updated Uniprot ID'
+        previous = str(df.at[idx, log_col] or '').strip()
+        df.at[idx, log_col] = '; '.join(value for value in [previous, 'Updated Uniprot ID'] if value)
 
     return df
 
@@ -332,7 +335,7 @@ def _detect_peptide_indicator(samples):
 
 @bp.route('/dataset-prep')
 def dataset_prep():
-    return render_template('kstar/dataset_prep.html')
+    return render_template('kstar/dataset_prep.html', species_options=get_species_options())
 
 
 @bp.route('/dataset-prep/preview', methods=['POST'])
@@ -432,7 +435,16 @@ def dataset_prep_run():
     peptide_format = (request.form.get('peptideFormat') or '').strip()
     peptide_indicator = (request.form.get('peptideIndicator') or '').strip() or None
     peptide_after = request.form.get('peptideAfter', '1') == '1'
-    annotate_prepared = request.form.get('annotatePrepared', '0') == '1'
+    annotate_prepared = True
+    update_max_coverage = request.form.get('updateMaxCoverage', '1') == '1'
+    coverage_species = (request.form.get('coverageSpecies') or '').strip()
+
+    species_options = get_species_options()
+    if update_max_coverage:
+        if not coverage_species:
+            return jsonify({'error': 'Please select a species when maximal coverage is enabled.'}), 400
+        if coverage_species not in species_options:
+            return jsonify({'error': f'Species "{coverage_species}" is not available in the ProteomeScout data.'}), 400
 
     try:
         converted_df, missing_rows = automatic_id_conversion(
@@ -470,47 +482,105 @@ def dataset_prep_run():
         if 'UniProt Accession' in converted_df.columns:
             converted_df = _apply_uniprot_redirect_updates(
                 converted_df,
-                accession_col=accession_col,
+                accession_col='UniProt Accession',
                 accession_out_col='UniProt Accession',
                 id_sep=accession_separator,
             )
 
-        if annotate_prepared:
-            from proteomeScoutAPI import ProteomicDataset
-            from proteomescout_app.annotate.routes import (
-                _add_activation_loop_column,
-                _normalize_spyc_prediction_columns,
-                _resolve_annotation_duplicates,
-            )
+        from proteomeScoutAPI import ProteomicDataset
+        from proteomescout_app.annotate.routes import (
+            _accession_not_found_mask,
+            _add_activation_loop_column,
+            _normalize_spyc_prediction_columns,
+            _project_remapped_accessions,
+            _remap_key,
+            _resolve_annotation_duplicates,
+        )
 
-            _configure_api_data_dir()
+        _configure_api_data_dir()
 
-            accession_for_annotation = 'UniProt Accession' if 'UniProt Accession' in converted_df.columns else 'Accession'
-            peptide_for_annotation = 'Formatted Peptide' if 'Formatted Peptide' in converted_df.columns else peptide_col
+        accession_for_annotation = 'UniProt Accession' if 'UniProt Accession' in converted_df.columns else 'Accession'
+        peptide_for_annotation = 'Formatted Peptide' if 'Formatted Peptide' in converted_df.columns else peptide_col
 
-            if accession_for_annotation not in converted_df.columns:
-                return jsonify({'error': 'Prepared dataset is missing an accession column for annotation.'}), 400
-            if peptide_for_annotation not in converted_df.columns:
-                return jsonify({'error': 'Prepared dataset is missing a peptide column for annotation.'}), 400
+        if accession_for_annotation not in converted_df.columns:
+            return jsonify({'error': 'Prepared dataset is missing an accession column for annotation.'}), 400
+        if peptide_for_annotation not in converted_df.columns:
+            return jsonify({'error': 'Prepared dataset is missing a peptide column for annotation.'}), 400
 
-            dataset = ProteomicDataset(
+        dataset = ProteomicDataset(
+            converted_df,
+            accession_col=accession_for_annotation,
+            peptide_col=peptide_for_annotation,
+            find_site=True,
+            GO_terms=True,
+        )
+        dataset.annotate_dataset()
+
+        if update_max_coverage:
+            failed_mask = _accession_not_found_mask(dataset.dataset)
+            remap_by_key = {}
+
+            if failed_mask.any():
+                failed_rows = dataset.dataset[failed_mask]
+                if accession_for_annotation in failed_rows.columns and peptide_for_annotation in failed_rows.columns:
+                    failed_accessions = failed_rows[accession_for_annotation].tolist()
+                    failed_peptides = failed_rows[peptide_for_annotation].tolist()
+                    for original_accession, peptide in zip(failed_accessions, failed_peptides):
+                        original = '' if pd.isna(original_accession) else str(original_accession).strip()
+                        candidate = get_maximal_coverage_accession(coverage_species, peptide)
+                        candidate = str(candidate or '').strip()
+                        updated = candidate or original
+                        if updated and updated != original:
+                            remap_by_key[_remap_key(original_accession, peptide)] = updated
+
+            remapped_accessions = _project_remapped_accessions(
                 converted_df,
-                accession_col=accession_for_annotation,
-                peptide_col=peptide_for_annotation,
-                find_site=True,
-                GO_terms=True,
+                accession_for_annotation,
+                peptide_for_annotation,
+                remap_by_key,
             )
-            dataset.annotate_dataset()
+            remapped_count = 0
+            for original, remapped in zip(converted_df[accession_for_annotation].tolist(), remapped_accessions):
+                original_text = '' if pd.isna(original) else str(original).strip()
+                if remapped != original_text:
+                    remapped_count += 1
 
-            _resolve_annotation_duplicates(dataset.dataset)
-            _normalize_spyc_prediction_columns(dataset.dataset)
-            if (
-                'modification_sites' in dataset.dataset.columns
-                and 'site_in_activation_loop' not in dataset.dataset.columns
-            ):
-                _add_activation_loop_column(dataset.dataset, accession_for_annotation)
+            if remapped_count > 0:
+                remap_df = converted_df.copy()
+                remap_df['UniProt for Maximal Coverage'] = remapped_accessions
+                remap_dataset = ProteomicDataset(
+                    remap_df,
+                    accession_col='UniProt for Maximal Coverage',
+                    peptide_col=peptide_for_annotation,
+                    find_site=True,
+                    GO_terms=True,
+                )
+                remap_dataset.annotate_dataset()
+                dataset = remap_dataset
+            else:
+                dataset.dataset['UniProt for Maximal Coverage'] = _project_remapped_accessions(
+                    dataset.dataset,
+                    accession_for_annotation,
+                    peptide_for_annotation,
+                    remap_by_key,
+                )
 
-            converted_df = dataset.dataset
+        _resolve_annotation_duplicates(dataset.dataset)
+        _normalize_spyc_prediction_columns(dataset.dataset)
+        if 'UniProt for Maximal Coverage' in dataset.dataset.columns and 'UniProt Accession' in dataset.dataset.columns:
+            dataset.dataset['UniProt Accession'] = dataset.dataset['UniProt for Maximal Coverage']
+            if 'UniProt ID Update Log' in dataset.dataset.columns:
+                existing_log = dataset.dataset['UniProt ID Update Log'].fillna('').astype(str)
+                dataset.dataset['UniProt ID Update Log'] = existing_log.apply(
+                    lambda value: '; '.join(part for part in [value.strip(), 'Updated for maximal coverage'] if part)
+                )
+        if (
+            'modification_sites' in dataset.dataset.columns
+            and 'site_in_activation_loop' not in dataset.dataset.columns
+        ):
+            _add_activation_loop_column(dataset.dataset, accession_for_annotation)
+
+        converted_df = dataset.dataset
     except PeptideSequenceError as exc:
         return jsonify({'error': f'Peptide formatting failed: {exc}'}), 400
     except Exception as exc:
@@ -522,17 +592,13 @@ def dataset_prep_run():
 
     original_name = os.path.basename(file.filename or 'dataset')
     base = original_name.rsplit('.', 1)[0] if '.' in original_name else original_name
-    if annotate_prepared:
-        download_name = f'{base}_kstar_prepared_annotated.csv'
-    else:
-        download_name = f'{base}_kstar_prepared.csv'
+    download_name = f'{base}_kstar_prepared_annotated.csv'
 
     headers = {'Content-Disposition': f'attachment; filename="{download_name}"'}
     if rename_map:
         headers['X-Data-Columns-Renamed'] = ' | '.join(rename_map.values())
     if not missing_rows.empty:
         headers['X-Missing-Accessions'] = str(len(missing_rows))
-    if annotate_prepared:
-        headers['X-Integrated-Annotation'] = '1'
+    headers['X-Integrated-Annotation'] = '1'
 
     return Response(out.getvalue(), mimetype='text/csv', headers=headers)

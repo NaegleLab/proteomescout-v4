@@ -20,7 +20,7 @@ def _config(key, default=None):
 @lru_cache(maxsize=1)
 def load_protein_data():
     data_path = _config('PROTEIN_DATA_TSV_PATH', 'data/data.tsv')
-    dataframe = pd.read_csv(data_path, sep='\t', dtype={'protein_id': str}).fillna('')
+    dataframe = pd.read_csv(data_path, sep='\t', dtype=str, low_memory=False).fillna('')
     return {
         str(row['protein_id']): row.to_dict()
         for _, row in dataframe.iterrows()
@@ -44,6 +44,33 @@ def clear_cache():
 
 def get_protein_by_id(protein_id):
     return load_protein_data().get(str(protein_id))
+
+
+@lru_cache(maxsize=1)
+def _build_accession_index():
+    accession_index = {}
+    for protein in load_protein_data().values():
+        protein_id = str(protein.get('protein_id', '') or '').strip()
+        if protein_id:
+            accession_index.setdefault(protein_id.upper(), protein)
+
+        uniprot_id = str(protein.get('uniprot_id', '') or '').strip()
+        if uniprot_id:
+            accession_index.setdefault(uniprot_id.upper(), protein)
+
+        for accession in parse_accessions(protein.get('accessions', '')):
+            accession = str(accession or '').strip()
+            if accession:
+                accession_index.setdefault(accession.upper(), protein)
+
+    return accession_index
+
+
+def get_protein_by_accession(accession):
+    accession = str(accession or '').strip().upper()
+    if not accession:
+        return None
+    return _build_accession_index().get(accession)
 
 
 def get_citation_by_id(experiment_id):
@@ -318,6 +345,75 @@ def parse_accessions(accession_string):
     if not accession_string or pd.isna(accession_string):
         return []
     return [item.strip() for item in ACCESSION_SPLIT_RE.split(str(accession_string)) if item.strip()]
+
+
+def _normalize_peptide_for_match(peptide):
+    return ''.join(ch for ch in str(peptide or '') if ch.isalpha()).upper()
+
+
+def _protein_is_canonical_record(protein):
+    return bool(str(protein.get('swissprot_nr', '') or '').strip())
+
+
+def _protein_modification_count(protein):
+    mod_text = str(protein.get('modifications', '') or '').strip()
+    if not mod_text:
+        return 0
+    return sum(1 for entry in mod_text.split(';') if entry.strip())
+
+
+def _protein_primary_uniprot_accession(protein):
+    uniprot_id = str(protein.get('uniprot_id', '') or '').strip()
+    if uniprot_id:
+        return uniprot_id
+
+    accessions = parse_accessions(protein.get('accessions', ''))
+    if accessions:
+        return str(accessions[0]).strip()
+
+    protein_id = str(protein.get('protein_id', '') or '').strip()
+    if protein_id:
+        return protein_id
+
+    return None
+
+
+@lru_cache(maxsize=1024)
+def get_maximal_coverage_accession(species, peptide):
+    normalized_species = _normalize(species)
+    normalized_peptide = str(peptide or '').strip()
+    if not normalized_species or not normalized_peptide:
+        return None
+
+    # Reuse the exact protein-search ranking behavior (species + peptide, top hit).
+    results = search_proteins(query='', peptide=normalized_peptide, species=species, limit=1)
+    if not results:
+        return None
+
+    return _protein_primary_uniprot_accession(results[0])
+
+
+def resolve_maximal_coverage_accession(accession, species, peptide):
+    accession = str(accession or '').strip()
+    if not accession:
+        return None
+
+    fallback = get_maximal_coverage_accession(species, peptide)
+    return fallback or accession
+
+
+def build_maximal_coverage_accessions(accessions, peptides, species):
+    resolved_accessions = []
+    changed_flags = []
+
+    for accession, peptide in zip(accessions, peptides):
+        original_accession = str(accession or '').strip()
+        resolved_accession = resolve_maximal_coverage_accession(original_accession, species, peptide)
+        resolved_accession = str(resolved_accession or '').strip() or original_accession
+        resolved_accessions.append(resolved_accession)
+        changed_flags.append(resolved_accession != original_accession)
+
+    return resolved_accessions, changed_flags
 
 
 def get_species_options():

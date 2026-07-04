@@ -14,7 +14,9 @@ from flask import current_app, jsonify, render_template, request, Response
 
 from proteomescout_app.annotate import bp
 from proteomescout_app.protein_data import (
+    get_maximal_coverage_accession,
     load_protein_data,
+    get_species_options,
     parse_accessions,
     parse_activation_loops,
     ptm_in_activation_loop,
@@ -24,6 +26,64 @@ logger = logging.getLogger(__name__)
 
 # Max upload size enforced server-side (separate from Flask MAX_CONTENT_LENGTH)
 _MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB
+
+
+def _is_truthy(value):
+    if pd.isna(value):
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    text = str(value).strip().lower()
+    if 'not found' in text:
+        return True
+    return text in {'1', 'true', 't', 'yes', 'y'}
+
+
+def _accession_not_found_mask(df: pd.DataFrame) -> pd.Series:
+    """Identify rows where annotation reports accession lookup failure."""
+    if 'PScout_Errors' in df.columns:
+        return df['PScout_Errors'].apply(
+            lambda value: bool(str(value).strip()) and any(
+                token in str(value).strip().lower()
+                for token in (
+                    'accession not found in database',
+                    'peptide not found in sequence',
+                    'could not map accession',
+                    'could not map peptide',
+                )
+            )
+        )
+
+    not_found_columns = []
+    for column in df.columns:
+        label = str(column).strip().lower()
+        if ('accession' in label and 'not found' in label) or ('accession' in label and 'error' in label):
+            not_found_columns.append(column)
+
+    if not not_found_columns:
+        return pd.Series([False] * len(df), index=df.index)
+
+    mask = pd.Series([False] * len(df), index=df.index)
+    for column in not_found_columns:
+        mask = mask | df[column].apply(_is_truthy)
+    return mask
+
+
+def _remap_key(accession, peptide):
+    acc = '' if pd.isna(accession) else str(accession).strip()
+    pep = '' if pd.isna(peptide) else str(peptide).strip()
+    return (acc, pep)
+
+
+def _project_remapped_accessions(df: pd.DataFrame, accession_col: str, peptide_col: str, remap_by_key: dict) -> list[str]:
+    projected = []
+    for _, row in df.iterrows():
+        original_accession = '' if pd.isna(row.get(accession_col)) else str(row.get(accession_col)).strip()
+        key = _remap_key(row.get(accession_col), row.get(peptide_col))
+        projected.append(remap_by_key.get(key, original_accession))
+    return projected
 
 
 def _read_dataframe(file_obj):
@@ -65,7 +125,7 @@ def _configure_api_data_dir():
 
 @bp.route('/')
 def landing():
-    return render_template('annotate/landing.html')
+    return render_template('annotate/landing.html', species_options=get_species_options())
 
 
 @bp.route('/get-columns', methods=['POST'])
@@ -229,14 +289,24 @@ def run_annotation():
 
     accession_col = (request.form.get('accessionCol') or '').strip()
     peptide_col = (request.form.get('peptideCol') or '').strip()
-    find_site = request.form.get('findSite') == '1'
-    go_terms = request.form.get('goTerms') == '1'
+    find_site = True
+    go_terms = True
+    update_max_coverage = request.form.get('updateMaxCoverage', '1') == '1'
+    coverage_species = (request.form.get('coverageSpecies') or '').strip()
 
     if not accession_col or not peptide_col:
         return jsonify({'error': 'Accession and peptide column names are required.'}), 400
 
+    species_options = get_species_options()
+    if update_max_coverage:
+        if not coverage_species:
+            return jsonify({'error': 'Please select a species when maximal coverage is enabled.'}), 400
+        if coverage_species not in species_options:
+            return jsonify({'error': f'Species "{coverage_species}" is not available in the ProteomeScout data.'}), 400
+
     try:
         df = _read_dataframe(file)
+        df = df.reset_index(drop=True)
     except Exception as exc:
         logger.warning('run_annotation file parse error: %s', exc)
         return jsonify({'error': f'Could not parse file: {exc}'}), 400
@@ -260,6 +330,67 @@ def run_annotation():
     except Exception as exc:
         logger.exception('Annotation failed unexpectedly')
         return jsonify({'error': 'Annotation failed due to an internal error. Please contact the administrator.'}), 500
+
+    if update_max_coverage:
+        failed_mask = _accession_not_found_mask(dataset.dataset)
+        remap_by_key = {}
+
+        if failed_mask.any():
+            failed_rows = dataset.dataset[failed_mask]
+            if accession_col in failed_rows.columns and peptide_col in failed_rows.columns:
+                failed_accessions = failed_rows[accession_col].tolist()
+                failed_peptides = failed_rows[peptide_col].tolist()
+                for original_accession, peptide in zip(failed_accessions, failed_peptides):
+                    original = '' if pd.isna(original_accession) else str(original_accession).strip()
+                    key = _remap_key(original_accession, peptide)
+                    candidate = get_maximal_coverage_accession(coverage_species, peptide)
+                    candidate = str(candidate or '').strip()
+                    updated = candidate or original
+                    reason = 'no_peptide_match_in_species'
+                    if candidate and updated != original:
+                        reason = 'updated_with_species_peptide_match'
+                    elif candidate and updated == original:
+                        reason = 'candidate_same_as_original'
+
+                    if updated and updated != original:
+                        remap_by_key[key] = updated
+
+        remapped_accessions = _project_remapped_accessions(df, accession_col, peptide_col, remap_by_key)
+        remapped_count = 0
+        for original, remapped in zip(df[accession_col].tolist(), remapped_accessions):
+            original_text = '' if pd.isna(original) else str(original).strip()
+            if remapped != original_text:
+                remapped_count += 1
+
+        if remapped_count > 0:
+            remap_df = df.copy()
+            remap_df['UniProt for Maximal Coverage'] = remapped_accessions
+            try:
+                remap_dataset = ProteomicDataset(
+                    remap_df,
+                    accession_col='UniProt for Maximal Coverage',
+                    peptide_col=peptide_col,
+                    find_site=find_site,
+                    GO_terms=go_terms,
+                )
+                remap_dataset.annotate_dataset()
+                dataset = remap_dataset
+                logger.info('Applied maximal coverage fallback to %s rows.', remapped_count)
+            except Exception:
+                logger.exception('Maximal coverage fallback re-annotation failed; keeping initial annotation results')
+                dataset.dataset['UniProt for Maximal Coverage'] = _project_remapped_accessions(
+                    dataset.dataset,
+                    accession_col,
+                    peptide_col,
+                    remap_by_key,
+                )
+        else:
+            dataset.dataset['UniProt for Maximal Coverage'] = _project_remapped_accessions(
+                dataset.dataset,
+                accession_col,
+                peptide_col,
+                remap_by_key,
+            )
 
     conflict_warnings = _resolve_annotation_duplicates(dataset.dataset)
     if conflict_warnings:
