@@ -162,6 +162,7 @@ function StructureViewer(protein_data) {
     this.last_zoom_width = 50;
 
     this.width = 900;
+        this.export_dpi = 300;
     this.svg = d3.select('.protein_viewer .viewer').append("svg")
       .attr("width", this.width)
       .attr("height", 0)
@@ -375,6 +376,7 @@ StructureViewer.prototype.create_scansite_track = function(track_viewer, show_re
 StructureViewer.prototype.create_residue_track = function(track_viewer, show_residues) {
     residue_track = new ResidueTrack('Residues', track_viewer.viewer, this.protein_data);
     residue_track.create(track_viewer.axis, this.width, show_residues);
+    residue_track.has_content = true;
     track_viewer.add_track(residue_track);
 };
 
@@ -526,7 +528,363 @@ StructureViewer.prototype.zoom_off = function(){
     }
 }
 
-StructureViewer.prototype.export_svg = function() {
+StructureViewer.prototype._parse_svg_length = function(value) {
+    if (value === undefined || value === null || value === '') {
+        return null;
+    }
+
+    var parsed = parseFloat(value);
+    if (isNaN(parsed) || !isFinite(parsed)) {
+        return null;
+    }
+    return parsed;
+};
+
+StructureViewer.prototype._scale_style_value = function(value, scaleFactor) {
+    if (!value || value === 'none') {
+        return null;
+    }
+
+    var match = String(value).trim().match(/^(-?\d*\.?\d+)([a-z%]*)$/i);
+    if (!match) {
+        return null;
+    }
+
+    var numericValue = parseFloat(match[1]);
+    var unit = match[2] || '';
+    return (numericValue * scaleFactor) + unit;
+};
+
+StructureViewer.prototype._clamp_font_size_min_pt = function(value, minPt, pointsPerUserUnit) {
+    if (!value) {
+        return value;
+    }
+
+    var match = String(value).trim().match(/^(-?\d*\.?\d+)([a-z%]*)$/i);
+    if (!match) {
+        return value;
+    }
+
+    var numericValue = parseFloat(match[1]);
+    var unit = (match[2] || '').toLowerCase();
+    if (isNaN(numericValue) || !isFinite(numericValue)) {
+        return value;
+    }
+
+    var safePointsPerUserUnit = pointsPerUserUnit;
+    if (!safePointsPerUserUnit || !isFinite(safePointsPerUserUnit) || safePointsPerUserUnit <= 0) {
+        safePointsPerUserUnit = 0.75; // Fallback for legacy 96dpi-like user unit mapping.
+    }
+    var minUserUnits = minPt / safePointsPerUserUnit;
+
+    function toUserUnits(number, unitName) {
+        if (unitName === 'pt') {
+            return number * (96 / 72);
+        }
+        if (unitName === 'in') {
+            return number * 96;
+        }
+        if (unitName === 'cm') {
+            return number * (96 / 2.54);
+        }
+        if (unitName === 'mm') {
+            return number * (96 / 25.4);
+        }
+        if (unitName === 'pc') {
+            return number * 16;
+        }
+        if (unitName === 'q') {
+            return number * (96 / 101.6);
+        }
+        if (unitName === 'px' || unitName === '') {
+            return number;
+        }
+        return null;
+    }
+
+    var numericInUserUnits = toUserUnits(numericValue, unit);
+    if (numericInUserUnits !== null) {
+        return Math.max(numericInUserUnits, minUserUnits) + 'px';
+    }
+
+    // For uncommon units where reliable conversion is ambiguous, enforce directly in points.
+    return (numericValue < minPt ? minPt + 'pt' : numericValue + unit);
+};
+
+StructureViewer.prototype._get_inherited_font_size = function(el) {
+    var node = el;
+    while (node) {
+        if (node.style) {
+            var styleSize = node.style.getPropertyValue('font-size');
+            if (styleSize) {
+                return styleSize;
+            }
+        }
+
+        var attrSize = node.getAttribute && node.getAttribute('font-size');
+        if (attrSize) {
+            return attrSize;
+        }
+
+        node = node.parentElement;
+    }
+
+    return '12pt';
+};
+
+StructureViewer.prototype._get_min_export_font_pt = function(exportWidthInches) {
+    var widthInches = parseFloat(exportWidthInches);
+    if (isNaN(widthInches) || !isFinite(widthInches)) {
+        return 8;
+    }
+
+    if (widthInches < 4) {
+        return 6;
+    }
+    if (widthInches < 6) {
+        return 8;
+    }
+    if (widthInches <= 8) {
+        return 10;
+    }
+    return 12;
+};
+
+StructureViewer.prototype._layout_compact_feature_labels = function(exportedSvg, exportWidthInches) {
+    var widthInches = parseFloat(exportWidthInches);
+    if (!exportedSvg || isNaN(widthInches) || !isFinite(widthInches) || widthInches > 4) {
+        return;
+    }
+
+    var viewer = this;
+
+    function estimateTextWidth(textValue, fontSizePx) {
+        var content = textValue || '';
+        return content.length * fontSizePx * 0.56;
+    }
+
+    function fitTextToWidth(label, maxWidthPx, fontSizePx) {
+        var fullText = label.getAttribute('data-export-original-text') || label.textContent || '';
+        label.setAttribute('data-export-original-text', fullText);
+
+        if (maxWidthPx <= 4) {
+            label.textContent = '';
+            return;
+        }
+
+        if (estimateTextWidth(fullText, fontSizePx) <= maxWidthPx) {
+            label.textContent = fullText;
+            return;
+        }
+
+        var ellipsis = '...';
+        var low = 0;
+        var high = fullText.length;
+        var best = '';
+
+        while (low <= high) {
+            var mid = Math.floor((low + high) / 2);
+            var candidate = fullText.substring(0, mid) + ellipsis;
+            if (estimateTextWidth(candidate, fontSizePx) <= maxWidthPx) {
+                best = candidate;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+
+        label.textContent = best;
+    }
+
+    function placeInside(featureClass) {
+        Array.prototype.forEach.call(exportedSvg.querySelectorAll('g[id^="track"]'), function(trackGroup) {
+            var rects = trackGroup.querySelectorAll('rect.' + featureClass);
+            var labels = trackGroup.querySelectorAll('text.' + featureClass);
+            var count = Math.min(rects.length, labels.length);
+
+            for (var i = 0; i < count; i++) {
+                var rect = rects[i];
+                var label = labels[i];
+                var x = parseFloat(rect.getAttribute('x'));
+                var w = parseFloat(rect.getAttribute('width'));
+                var y = parseFloat(rect.getAttribute('y'));
+                var h = parseFloat(rect.getAttribute('height'));
+                var labelFontSize = viewer._parse_svg_length(
+                    (label.style && label.style.getPropertyValue('font-size')) || label.getAttribute('font-size')
+                ) || 12;
+                var verticalOffsetFactor = widthInches < 3.5 ? 0.54 : 0.48;
+
+                if (!isFinite(x) || !isFinite(w) || !isFinite(y) || !isFinite(h)) {
+                    continue;
+                }
+
+                // Illustrator often ignores dominant-baseline; use an explicit baseline offset
+                // so text appears centered inside feature rectangles.
+                label.setAttribute('x', x + (w / 2));
+                label.setAttribute('y', y + (h / 2) + (labelFontSize * verticalOffsetFactor));
+                label.style.setProperty('dominant-baseline', 'auto');
+                label.style.setProperty('alignment-baseline', 'baseline');
+                label.style.setProperty('text-anchor', 'middle');
+
+                var horizontalPadding = 4;
+                fitTextToWidth(label, Math.max(0, w - horizontalPadding), labelFontSize);
+            }
+        });
+    }
+
+    placeInside('domain');
+    placeInside('region');
+};
+
+StructureViewer.prototype._adjust_export_visual_scale = function(exportedSvg, baseScale, pointsPerUserUnit, minTextPt, exportWidthInches) {
+    if (!exportedSvg || !baseScale || !isFinite(baseScale) || baseScale <= 0) {
+        return;
+    }
+
+    var minFontPt = minTextPt;
+    if (!minFontPt || !isFinite(minFontPt) || minFontPt <= 0) {
+        minFontPt = 8;
+    }
+
+    var textScale = Math.max(1.0, Math.min(1.35, baseScale));
+    var strokeScale = Math.max(0.7, Math.min(1.4, baseScale));
+    var textCompensation = textScale / baseScale;
+    var strokeCompensation = strokeScale / baseScale;
+    var widthInches = parseFloat(exportWidthInches);
+
+    Array.prototype.forEach.call(exportedSvg.querySelectorAll('*'), function(el) {
+        var textStyle = el.style ? el.style.getPropertyValue('font-size') : '';
+        var textAttr = el.getAttribute('font-size');
+        var scaledText;
+        var effectiveMinFontPt = minFontPt;
+        var isResidueLetter = el.classList && el.classList.contains('aminoacid');
+        var isResidueTick = false;
+        if (el.tagName && el.tagName.toLowerCase() === 'text' && el.classList && el.classList.length) {
+            isResidueTick = Array.prototype.some.call(el.classList, function(cls) {
+                return /^t\d+$/.test(cls);
+            });
+        }
+
+        if (isResidueLetter || isResidueTick) {
+            effectiveMinFontPt = widthInches < 7 ? Math.max(4, minFontPt - 4) : Math.max(4, minFontPt - 2);
+        }
+
+        if (widthInches < 7 && isResidueTick) {
+            var tickY = this._parse_svg_length(el.getAttribute('y'));
+            if (isFinite(tickY)) {
+                el.setAttribute('y', tickY + 4);
+            }
+        }
+
+        if (textStyle) {
+            scaledText = this._scale_style_value(textStyle, textCompensation);
+            if (scaledText) {
+                scaledText = this._clamp_font_size_min_pt(scaledText, effectiveMinFontPt, pointsPerUserUnit);
+                el.style.setProperty('font-size', scaledText);
+            }
+        }
+        if (textAttr) {
+            scaledText = this._scale_style_value(textAttr, textCompensation);
+            if (scaledText) {
+                scaledText = this._clamp_font_size_min_pt(scaledText, effectiveMinFontPt, pointsPerUserUnit);
+                el.setAttribute('font-size', scaledText);
+            }
+        }
+
+        if (!textStyle && !textAttr && el.tagName && el.tagName.toLowerCase() === 'text') {
+            var inheritedText = this._get_inherited_font_size(el);
+            var scaledInherited = this._scale_style_value(inheritedText, textCompensation) || inheritedText;
+            var clampedInherited = this._clamp_font_size_min_pt(scaledInherited, effectiveMinFontPt, pointsPerUserUnit);
+            if (clampedInherited) {
+                el.style.setProperty('font-size', clampedInherited);
+            }
+        }
+
+        var strokeStyle = el.style ? el.style.getPropertyValue('stroke-width') : '';
+        var strokeAttr = el.getAttribute('stroke-width');
+        var scaledStroke;
+
+        if (strokeStyle) {
+            scaledStroke = this._scale_style_value(strokeStyle, strokeCompensation);
+            if (scaledStroke) {
+                el.style.setProperty('stroke-width', scaledStroke);
+            }
+        }
+        if (strokeAttr) {
+            scaledStroke = this._scale_style_value(strokeAttr, strokeCompensation);
+            if (scaledStroke) {
+                el.setAttribute('stroke-width', scaledStroke);
+            }
+        }
+    }, this);
+};
+
+StructureViewer.prototype._is_offscreen_transform = function(el, maxWidth) {
+    if (!el) {
+        return false;
+    }
+
+    var transform = el.getAttribute('transform');
+    if (!transform) {
+        return false;
+    }
+
+    // Catch translated track groups parked far off to the right during hide animations.
+    var match = transform.match(/translate\(\s*(-?\d*\.?\d+)/i);
+    if (!match) {
+        return false;
+    }
+
+    var tx = parseFloat(match[1]);
+    if (isNaN(tx) || !isFinite(tx)) {
+        return false;
+    }
+
+    return tx > (maxWidth * 1.5);
+};
+
+StructureViewer.prototype._prune_exported_svg = function(exportedSvg, sourceWidth) {
+    if (!exportedSvg) {
+        return;
+    }
+
+    var maxWidth = sourceWidth || this.width || 900;
+    var nodesToRemove = [];
+
+    // Only prune track container groups that were moved off-canvas.
+    // Avoid pruning arbitrary hidden nodes, which can remove intended content.
+    Array.prototype.forEach.call(exportedSvg.querySelectorAll('g[id^="track"]'), function(el) {
+        if (this._is_offscreen_transform(el, maxWidth)) {
+            nodesToRemove.push(el);
+        }
+    }, this);
+
+    nodesToRemove.forEach(function(node) {
+        if (node && node.parentNode) {
+            node.parentNode.removeChild(node);
+        }
+    });
+};
+
+StructureViewer.prototype._inches_to_px = function(inches) {
+    return Math.round(inches * this.export_dpi);
+};
+
+StructureViewer.prototype.parse_export_inches = function(inchesValue) {
+    if (inchesValue === undefined || inchesValue === null || inchesValue === '') {
+        return null;
+    }
+
+    var requestedInches = parseFloat(inchesValue);
+    if (isNaN(requestedInches) || !isFinite(requestedInches) || requestedInches < 1 || requestedInches > 40) {
+        alert('Please enter a width between 1 and 40 inches.');
+        return null;
+    }
+
+    return requestedInches;
+};
+
+StructureViewer.prototype.export_svg = function(targetWidthPx, targetWidthInches) {
     var sourceSvg = document.querySelector('.protein_viewer .viewer svg');
     if (!sourceSvg) {
         alert('No viewer SVG found to export.');
@@ -537,12 +895,32 @@ StructureViewer.prototype.export_svg = function() {
     exportedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     exportedSvg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
-    if (!exportedSvg.getAttribute('width')) {
-        exportedSvg.setAttribute('width', sourceSvg.clientWidth || 900);
+    var sourceViewBox = sourceSvg.viewBox && sourceSvg.viewBox.baseVal;
+    var sourceWidth = sourceViewBox && sourceViewBox.width ? sourceViewBox.width :
+        this._parse_svg_length(sourceSvg.getAttribute('width')) || sourceSvg.clientWidth || 900;
+    var sourceHeight = sourceViewBox && sourceViewBox.height ? sourceViewBox.height :
+        this._parse_svg_length(sourceSvg.getAttribute('height')) || sourceSvg.clientHeight || 400;
+
+    var finalWidth = targetWidthPx || sourceWidth;
+    if (!finalWidth || !isFinite(finalWidth) || finalWidth <= 0) {
+        finalWidth = sourceWidth;
     }
-    if (!exportedSvg.getAttribute('height')) {
-        exportedSvg.setAttribute('height', sourceSvg.clientHeight || 400);
-    }
+
+    var baseScale = finalWidth / sourceWidth;
+    var finalHeight = Math.max(1, Math.round(sourceHeight * baseScale));
+    var finalWidthInches = targetWidthInches || (finalWidth / this.export_dpi);
+    var finalHeightInches = finalHeight / this.export_dpi;
+    var pointsPerUserUnit = (72 * finalWidthInches) / sourceWidth;
+    var minTextPt = this._get_min_export_font_pt(finalWidthInches);
+
+    this._prune_exported_svg(exportedSvg, sourceWidth);
+
+    exportedSvg.setAttribute('viewBox', '0 0 {0} {1}'.format(sourceWidth, sourceHeight));
+    exportedSvg.setAttribute('width', finalWidthInches.toFixed(3).replace(/0+$/, '').replace(/\.$/, '') + 'in');
+    exportedSvg.setAttribute('height', finalHeightInches.toFixed(3).replace(/0+$/, '').replace(/\.$/, '') + 'in');
+
+    this._adjust_export_visual_scale(exportedSvg, baseScale, pointsPerUserUnit, minTextPt, finalWidthInches);
+    this._layout_compact_feature_labels(exportedSvg, finalWidthInches);
 
     var serialized = new XMLSerializer().serializeToString(exportedSvg);
     if (!serialized.startsWith('<?xml')) {
@@ -662,9 +1040,86 @@ $(function(){
     //               });
 
     wireButton('.svg-tool', {}, function(){
-        if (window.structure_viewer) {
-            window.structure_viewer.export_svg();
+        if (!window.structure_viewer) {
+            return;
         }
+
+        var modalElement = document.getElementById('svgExportModal');
+        if (!modalElement || !window.bootstrap || !window.bootstrap.Modal) {
+            alert('Export modal is not available.');
+            return;
+        }
+
+        var sourceSvg = document.querySelector('.protein_viewer .viewer svg');
+        var sourceWidth = sourceSvg ? (
+            window.structure_viewer._parse_svg_length(sourceSvg.getAttribute('width')) || sourceSvg.clientWidth || 900
+        ) : 900;
+        var defaultInches = Math.max(1, Math.min(40, sourceWidth / window.structure_viewer.export_dpi));
+
+        var presetRadios = $('.svg-export-size');
+        var customRadio = $('#svg-size-custom');
+        var customInput = $('#svgExportCustomInches');
+        var pixelPreview = $('#svgExportPxPreview');
+
+        function selectedInchesFromModal() {
+            var selected = $('input[name="svg-export-size"]:checked').val();
+            if (selected === 'custom') {
+                return window.structure_viewer.parse_export_inches(customInput.val());
+            }
+            return window.structure_viewer.parse_export_inches(selected);
+        }
+
+        function updateCustomState() {
+            var isCustom = customRadio.is(':checked');
+            customInput.prop('disabled', !isCustom);
+        }
+
+        function updatePixelPreview() {
+            var inches = selectedInchesFromModal();
+            if (inches === null) {
+                pixelPreview.text('');
+                return;
+            }
+            var px = window.structure_viewer._inches_to_px(inches);
+            pixelPreview.text('Approximate width: ' + px + ' px at ' + window.structure_viewer.export_dpi + ' DPI');
+        }
+
+        var presetMatch = false;
+        presetRadios.each(function() {
+            var value = $(this).val();
+            if (value !== 'custom' && Math.abs(parseFloat(value) - defaultInches) < 0.05) {
+                $(this).prop('checked', true);
+                presetMatch = true;
+            }
+        });
+        if (!presetMatch) {
+            customRadio.prop('checked', true);
+            customInput.val(defaultInches.toFixed(2));
+        }
+
+        updateCustomState();
+        updatePixelPreview();
+
+        presetRadios.off('change.svgexport').on('change.svgexport', function() {
+            updateCustomState();
+            updatePixelPreview();
+        });
+        customInput.off('input.svgexport').on('input.svgexport', function() {
+            updatePixelPreview();
+        });
+
+        $('#svg-export-confirm').off('click.svgexport').on('click.svgexport', function() {
+            var selectedInches = selectedInchesFromModal();
+            if (selectedInches === null) {
+                return;
+            }
+
+            var targetWidthPx = window.structure_viewer._inches_to_px(selectedInches);
+            window.structure_viewer.export_svg(targetWidthPx, selectedInches);
+            window.bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+        });
+
+        window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
     });
 
     wireButton('.help-tool', { icons: { primary: 'ui-icon-help' }, text:false });
