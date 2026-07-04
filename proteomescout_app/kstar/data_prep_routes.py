@@ -140,6 +140,44 @@ def _sanitize_excel_peptide_value(value):
     return text
 
 
+def _normalize_padded_centered_peptide(value):
+    """Normalize aligned peptides that use terminal padding characters.
+
+    If a peptide is uppercase/aligned with terminal padding (`_`, `-`, `.`),
+    lowercase the amino acid nearest the center position *before* trimming
+    padding so the modification site is preserved.
+    """
+    if pd.isna(value):
+        return value
+
+    if not isinstance(value, str):
+        return value
+
+    text = _sanitize_excel_peptide_value(value)
+    if not isinstance(text, str):
+        return text
+
+    pad_chars = {'_', '-', '.'}
+    has_terminal_padding = bool(text) and (text[0] in pad_chars or text[-1] in pad_chars)
+    if not has_terminal_padding:
+        return text
+
+    alpha_positions = [idx for idx, char in enumerate(text) if char.isalpha()]
+    if not alpha_positions:
+        return text.strip('_.-')
+
+    alpha_chars = [text[idx] for idx in alpha_positions]
+    is_all_uppercase_alpha = all(char.isupper() for char in alpha_chars)
+    if is_all_uppercase_alpha:
+        center = (len(text) - 1) / 2
+        target_idx = min(alpha_positions, key=lambda idx: abs(idx - center))
+        text_chars = list(text)
+        text_chars[target_idx] = text_chars[target_idx].lower()
+        text = ''.join(text_chars)
+
+    return text.strip('_.-')
+
+
 def _extract_primary_accession(value, id_sep=None):
     if pd.isna(value):
         return ''
@@ -284,7 +322,7 @@ def _detect_peptide_column(df):
     best_format = None
     for column in df.columns:
         sample = [
-            _sanitize_excel_peptide_value(value)
+            _normalize_padded_centered_peptide(value)
             for value in _sample_strings(df[column], limit=100)
         ]
         sample = [value for value in sample if isinstance(value, str) and value.strip()]
@@ -410,7 +448,7 @@ def dataset_prep_run():
         return jsonify({'error': f'Peptide column "{peptide_col}" was not found in the uploaded file.'}), 400
 
     # Remove Excel-inserted '=' formula markers before peptide processing.
-    df[peptide_col] = df[peptide_col].apply(_sanitize_excel_peptide_value)
+    df[peptide_col] = df[peptide_col].apply(_normalize_padded_centered_peptide)
 
     prefix_data_columns = request.form.get('prefixDataColumns', '1') == '1'
     selected_data_columns = request.form.getlist('dataColumns')
