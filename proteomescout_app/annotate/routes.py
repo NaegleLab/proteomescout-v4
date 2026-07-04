@@ -127,6 +127,59 @@ def _resolve_annotation_duplicates(df: pd.DataFrame) -> list[str]:
     return warnings
 
 
+def _normalize_spyc_prediction_columns(df: pd.DataFrame) -> list[str]:
+    """Normalize SpY-C prediction values to consistent text labels.
+
+    Converts numeric/bool predictions and legacy confidence labels to:
+    - binder
+    - nonbinder
+    """
+
+    def _normalize_value(value):
+        if pd.isna(value):
+            return value
+
+        if isinstance(value, bool):
+            return 'binder' if value else 'nonbinder'
+
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            if value == 1:
+                return 'binder'
+            if value == 0:
+                return 'nonbinder'
+            return value
+
+        text = str(value).strip()
+        if not text:
+            return text
+
+        lowered = text.lower()
+        if lowered in {'1', 'true', 't', 'yes'}:
+            return 'binder'
+        if lowered in {'0', 'false', 'f', 'no'}:
+            return 'nonbinder'
+
+        lowered = lowered.replace('-', ' ').replace('_', ' ')
+        lowered = ' '.join(lowered.split())
+        if lowered in {'confident binder', 'binder'}:
+            return 'binder'
+        if lowered in {'confident nonbinder', 'confident non binder', 'nonbinder', 'non binder'}:
+            return 'nonbinder'
+
+        return value
+
+    normalized_columns = []
+    for column in df.columns:
+        column_label = str(column).lower()
+        if 'spy-c' not in column_label and 'spy c' not in column_label:
+            continue
+
+        df[column] = df[column].apply(_normalize_value)
+        normalized_columns.append(str(column))
+
+    return normalized_columns
+
+
 def _build_accession_loop_map():
     """Build a dict mapping each UniProt accession to its activation loop list."""
     acc_map = {}
@@ -213,6 +266,10 @@ def run_annotation():
         for msg in conflict_warnings:
             logger.info('Column conflict resolved: %s', msg)
 
+    normalized_spyc_cols = _normalize_spyc_prediction_columns(dataset.dataset)
+    if normalized_spyc_cols:
+        logger.info('Normalized SpY-C prediction labels in columns: %s', ', '.join(normalized_spyc_cols))
+
     # Backfill legacy activation-loop flag only when API did not provide one.
     if (
         find_site
@@ -233,5 +290,7 @@ def run_annotation():
     }
     if conflict_warnings:
         headers['X-Annotation-Warnings'] = ' | '.join(conflict_warnings)
+    if normalized_spyc_cols:
+        headers['X-SpYC-Normalized'] = ' | '.join(normalized_spyc_cols)
 
     return Response(out.getvalue(), mimetype='text/csv', headers=headers)

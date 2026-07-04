@@ -9,10 +9,12 @@ from collections import Counter
 
 import numpy as np
 import pandas as pd
+import requests
 from flask import Response, current_app, jsonify, render_template, request
 
 from proteomescout_app.kstar import bp
 from proteomescout_app.dataset_processing.accessions import automatic_id_conversion
+from proteomescout_app.dataset_processing.accessions import identify_accession_type
 from proteomescout_app.dataset_processing.accessions import identify_most_common_accession_type
 from proteomescout_app.dataset_processing.peptides import (
     PeptideSequenceError,
@@ -115,6 +117,138 @@ def _sample_strings(series, limit=200):
     return values
 
 
+def _sanitize_excel_peptide_value(value):
+    """Remove common Excel formula artifacts from peptide strings.
+
+    Excel may serialize leading dashes as formula-like text such as
+    ="---PEPTIDE". We strip the leading '=' and unwrap matching quotes.
+    """
+    if pd.isna(value):
+        return value
+
+    if not isinstance(value, str):
+        return value
+
+    text = value.strip()
+    while text.startswith('='):
+        text = text[1:].lstrip()
+
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {'"', "'"}:
+        text = text[1:-1]
+
+    return text
+
+
+def _extract_primary_accession(value, id_sep=None):
+    if pd.isna(value):
+        return ''
+
+    text = str(value).strip()
+    if not text:
+        return ''
+
+    if id_sep and id_sep in text:
+        return text.split(id_sep)[0].strip()
+
+    for sep in (';', ','):
+        if sep in text:
+            return text.split(sep)[0].strip()
+
+    return text
+
+
+def _resolve_uniprot_redirect_accession(accession):
+    """Resolve UniProt accession redirects and return updated accession if changed."""
+    if not accession:
+        return None
+
+    url = f'https://rest.uniprot.org/uniprotkb/{accession}.json'
+    try:
+        response = requests.get(url, timeout=20, allow_redirects=True)
+    except Exception:
+        return None
+
+    if not response.ok:
+        return None
+
+    try:
+        payload = response.json()
+    except Exception:
+        return None
+
+    updated = str(payload.get('primaryAccession', '')).strip()
+    if updated and updated != accession:
+        return updated
+
+    if response.history:
+        final_path = response.url.rsplit('/', 1)[-1]
+        redirected = final_path.split('.', 1)[0].strip()
+        if redirected and redirected != accession:
+            return redirected
+
+    return None
+
+
+def _should_check_uniprot_redirect(accession):
+    """Return True only for likely non-canonical accessions.
+
+    Criteria:
+    - Does not start with O, P, or Q
+    - OR has isoform suffix like -1, -2, ...
+    """
+    if not accession:
+        return False
+
+    acc = str(accession).strip().upper()
+    if not acc:
+        return False
+
+    if '-' in acc:
+        parts = acc.rsplit('-', 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            return True
+
+    return not acc.startswith(('O', 'P', 'Q'))
+
+
+def _apply_uniprot_redirect_updates(df, accession_col, accession_out_col, id_sep=None):
+    """Update UniProt accessions based on UniProt redirect behavior.
+
+    Adds a log column populated only for changed values:
+    - Updated Uniprot ID
+    """
+    log_col = 'UniProt ID Update Log'
+    df[log_col] = ''
+
+    if accession_col not in df.columns or accession_out_col not in df.columns:
+        return df
+
+    cache = {}
+    for idx, row in df.iterrows():
+        source_acc = _extract_primary_accession(row.get(accession_col), id_sep=id_sep)
+        if not source_acc:
+            continue
+
+        acc_type = identify_accession_type(source_acc)
+        if acc_type not in {'UniProtKB', 'UniProtKB_AC-ID'}:
+            continue
+
+        if not _should_check_uniprot_redirect(source_acc):
+            continue
+
+        if source_acc not in cache:
+            cache[source_acc] = _resolve_uniprot_redirect_accession(source_acc)
+
+        updated_acc = cache[source_acc]
+        if not updated_acc:
+            continue
+
+        df.at[idx, accession_out_col] = updated_acc
+        df.at[idx, log_col] = 'Updated Uniprot ID'
+
+    return df
+
+
 def _detect_accession_column(df):
     best_column = None
     best_score = -1.0
@@ -146,7 +280,11 @@ def _detect_peptide_column(df):
     best_score = -1.0
     best_format = None
     for column in df.columns:
-        sample = _sample_strings(df[column], limit=100)
+        sample = [
+            _sanitize_excel_peptide_value(value)
+            for value in _sample_strings(df[column], limit=100)
+        ]
+        sample = [value for value in sample if isinstance(value, str) and value.strip()]
         if not sample:
             continue
         score = 0.0
@@ -268,6 +406,9 @@ def dataset_prep_run():
     if peptide_col not in df.columns:
         return jsonify({'error': f'Peptide column "{peptide_col}" was not found in the uploaded file.'}), 400
 
+    # Remove Excel-inserted '=' formula markers before peptide processing.
+    df[peptide_col] = df[peptide_col].apply(_sanitize_excel_peptide_value)
+
     prefix_data_columns = request.form.get('prefixDataColumns', '1') == '1'
     selected_data_columns = request.form.getlist('dataColumns')
     rename_map = {}
@@ -326,9 +467,21 @@ def dataset_prep_run():
         if 'Accession' in converted_df.columns:
             converted_df = converted_df.rename(columns={'Accession': 'UniProt Accession'})
 
+        if 'UniProt Accession' in converted_df.columns:
+            converted_df = _apply_uniprot_redirect_updates(
+                converted_df,
+                accession_col=accession_col,
+                accession_out_col='UniProt Accession',
+                id_sep=accession_separator,
+            )
+
         if annotate_prepared:
             from proteomeScoutAPI import ProteomicDataset
-            from proteomescout_app.annotate.routes import _add_activation_loop_column, _resolve_annotation_duplicates
+            from proteomescout_app.annotate.routes import (
+                _add_activation_loop_column,
+                _normalize_spyc_prediction_columns,
+                _resolve_annotation_duplicates,
+            )
 
             _configure_api_data_dir()
 
@@ -350,6 +503,7 @@ def dataset_prep_run():
             dataset.annotate_dataset()
 
             _resolve_annotation_duplicates(dataset.dataset)
+            _normalize_spyc_prediction_columns(dataset.dataset)
             if (
                 'modification_sites' in dataset.dataset.columns
                 and 'site_in_activation_loop' not in dataset.dataset.columns
