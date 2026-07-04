@@ -9,7 +9,7 @@ from collections import Counter
 
 import numpy as np
 import pandas as pd
-from flask import Response, jsonify, render_template, request
+from flask import Response, current_app, jsonify, render_template, request
 
 from proteomescout_app.kstar import bp
 from proteomescout_app.dataset_processing.accessions import automatic_id_conversion
@@ -53,6 +53,23 @@ def _read_dataframe(file_obj):
         sample = raw[:4096].decode('utf-8', errors='replace')
         sep = '\t' if sample.count('\t') >= sample.count(',') else ','
     return pd.read_csv(io.BytesIO(raw), sep=sep)
+
+
+def _configure_api_data_dir():
+    """Point proteomeScoutAPI at the data directory configured in the app."""
+    import proteomeScoutAPI.config as pscout_config
+
+    configured_path = current_app.config.get(
+        'PROTEOMESCOUT_API_DATA_DIR',
+        current_app.config.get('DATA_ROOT_DIR', 'data'),
+    )
+
+    resolved = os.path.abspath(configured_path)
+    if os.path.isfile(os.path.join(resolved, 'data.tsv')):
+        resolved = os.path.dirname(resolved)
+
+    pscout_config.DATASET_DIR = resolved
+    pscout_config.UPDATE = False
 
 
 def _is_numeric_or_nan(series):
@@ -274,6 +291,7 @@ def dataset_prep_run():
     peptide_format = (request.form.get('peptideFormat') or '').strip()
     peptide_indicator = (request.form.get('peptideIndicator') or '').strip() or None
     peptide_after = request.form.get('peptideAfter', '1') == '1'
+    annotate_prepared = request.form.get('annotatePrepared', '0') == '1'
 
     try:
         converted_df, missing_rows = automatic_id_conversion(
@@ -307,6 +325,38 @@ def dataset_prep_run():
         )
         if 'Accession' in converted_df.columns:
             converted_df = converted_df.rename(columns={'Accession': 'UniProt Accession'})
+
+        if annotate_prepared:
+            from proteomeScoutAPI import ProteomicDataset
+            from proteomescout_app.annotate.routes import _add_activation_loop_column, _resolve_annotation_duplicates
+
+            _configure_api_data_dir()
+
+            accession_for_annotation = 'UniProt Accession' if 'UniProt Accession' in converted_df.columns else 'Accession'
+            peptide_for_annotation = 'Formatted Peptide' if 'Formatted Peptide' in converted_df.columns else peptide_col
+
+            if accession_for_annotation not in converted_df.columns:
+                return jsonify({'error': 'Prepared dataset is missing an accession column for annotation.'}), 400
+            if peptide_for_annotation not in converted_df.columns:
+                return jsonify({'error': 'Prepared dataset is missing a peptide column for annotation.'}), 400
+
+            dataset = ProteomicDataset(
+                converted_df,
+                accession_col=accession_for_annotation,
+                peptide_col=peptide_for_annotation,
+                find_site=True,
+                GO_terms=True,
+            )
+            dataset.annotate_dataset()
+
+            _resolve_annotation_duplicates(dataset.dataset)
+            if (
+                'modification_sites' in dataset.dataset.columns
+                and 'site_in_activation_loop' not in dataset.dataset.columns
+            ):
+                _add_activation_loop_column(dataset.dataset, accession_for_annotation)
+
+            converted_df = dataset.dataset
     except PeptideSequenceError as exc:
         return jsonify({'error': f'Peptide formatting failed: {exc}'}), 400
     except Exception as exc:
@@ -318,12 +368,17 @@ def dataset_prep_run():
 
     original_name = os.path.basename(file.filename or 'dataset')
     base = original_name.rsplit('.', 1)[0] if '.' in original_name else original_name
-    download_name = f'{base}_kstar_prepared.csv'
+    if annotate_prepared:
+        download_name = f'{base}_kstar_prepared_annotated.csv'
+    else:
+        download_name = f'{base}_kstar_prepared.csv'
 
     headers = {'Content-Disposition': f'attachment; filename="{download_name}"'}
     if rename_map:
         headers['X-Data-Columns-Renamed'] = ' | '.join(rename_map.values())
     if not missing_rows.empty:
         headers['X-Missing-Accessions'] = str(len(missing_rows))
+    if annotate_prepared:
+        headers['X-Integrated-Annotation'] = '1'
 
     return Response(out.getvalue(), mimetype='text/csv', headers=headers)

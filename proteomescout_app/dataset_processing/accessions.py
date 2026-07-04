@@ -78,7 +78,7 @@ def check_id_mapping_results_ready(job_id):
             else:
                 raise Exception(request["jobStatus"])
         else:
-            return bool(j["results"] or j["failedIds"])
+            return bool(j.get("results", []) or j.get("failedIds", []))
 
 
 def get_batch(batch_response, file_format, compressed):
@@ -94,6 +94,8 @@ def combine_batches(all_results, batch_results, file_format):
     if file_format == "json":
         for key in ("results", "failedIds"):
             if key in batch_results and batch_results[key]:
+                if key not in all_results:
+                    all_results[key] = []
                 all_results[key] += batch_results[key]
     elif file_format == "tsv":
         return all_results + batch_results[1:]
@@ -221,6 +223,7 @@ def construct_id_map(accessions, from_id = 'UniProtKB_AC-ID', to_id = 'UniProtKB
     job_id = submit_id_mapping(
         from_db=from_id, to_db=to_id, ids=accessions, taxonID=taxonID
     )
+    results = {"results": [], "failedIds": []}
 
     if check_id_mapping_results_ready(job_id):
         link = get_id_mapping_results_link(job_id)
@@ -228,7 +231,7 @@ def construct_id_map(accessions, from_id = 'UniProtKB_AC-ID', to_id = 'UniProtKB
 
     # create mapping dictionary
     id_to_acc = {}
-    for entry in results['results']:
+    for entry in results.get('results', []):
         from_id_entry = entry['from']
         if to_id == 'Gene_Name':
             to_id_entry = entry['to']

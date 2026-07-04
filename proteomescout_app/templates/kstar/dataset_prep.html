@@ -276,6 +276,16 @@
 
     <div class="prep-card">
       <h2><span class="badge bg-secondary me-2">4</span>Run and Download</h2>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="annotatePrepared" />
+        <label class="form-check-label" for="annotatePrepared">
+          Integrate ProteomeScout annotation after preparation
+        </label>
+        <div class="form-text">
+          Uses prepared columns <strong>UniProt Accession</strong> and <strong>Formatted Peptide</strong>.
+          Adds annotation fields in the same output CSV.
+        </div>
+      </div>
       <div class="row g-3 align-items-end">
         <div class="col-lg-8">
           <label for="outputName" class="form-label">Output file name</label>
@@ -460,6 +470,7 @@
         formData.append('peptideFormat', peptideFormat.value);
         formData.append('peptideIndicator', peptideIndicator.value.trim());
         formData.append('peptideAfter', peptideAfter.checked ? '1' : '0');
+        formData.append('annotatePrepared', document.getElementById('annotatePrepared').checked ? '1' : '0');
         formData.append('prefixDataColumns', prefixDataColumns.checked ? '1' : '0');
         Array.from(dataColumns.selectedOptions).forEach(option => {
           formData.append('dataColumns', option.value);
