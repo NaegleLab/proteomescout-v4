@@ -397,6 +397,39 @@
         coverageSpecies.disabled = !updateMaxCoverage.checked;
       }
 
+      async function readErrorMessage(response, fallbackMessage) {
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        const statusText = `${response.status} ${response.statusText}`.trim();
+
+        if (contentType.includes('application/json')) {
+          try {
+            const payload = await response.json();
+            if (payload && payload.error) {
+              return payload.error;
+            }
+          } catch (error) {
+            return fallbackMessage || `Request failed (${statusText}).`;
+          }
+        }
+
+        let responseText = '';
+        try {
+          responseText = (await response.text()).trim();
+        } catch (error) {
+          responseText = '';
+        }
+
+        if (responseText.startsWith('<')) {
+          return `Request failed (${statusText}). The server returned an HTML error page instead of JSON or CSV, which usually means an upstream timeout or proxy error.`;
+        }
+
+        if (responseText) {
+          return `Request failed (${statusText}): ${responseText.slice(0, 300)}`;
+        }
+
+        return fallbackMessage || `Request failed (${statusText}).`;
+      }
+
       function updateSummary(response) {
         const accessionText = response.accessionColumn
           ? `Suggested accession column: <strong>${response.accessionColumn}</strong>`
@@ -461,7 +494,7 @@
           const response = await fetch(ROUTES.preview, { method: 'POST', body: formData });
           const payload = await response.json();
           if (!response.ok) {
-            throw new Error(payload.error || 'Preview failed.');
+            throw new Error(payload.error || `Preview failed (${response.status} ${response.statusText}).`);
           }
 
           populateFromPreview(payload);
@@ -503,9 +536,13 @@
 
         try {
           const response = await fetch(ROUTES.run, { method: 'POST', body: formData });
+          const contentType = (response.headers.get('content-type') || '').toLowerCase();
           if (!response.ok) {
-            const payload = await response.json();
-            throw new Error(payload.error || 'Preparation failed.');
+            throw new Error(await readErrorMessage(response, 'Preparation failed.'));
+          }
+
+          if (contentType.includes('text/html') || contentType.includes('application/json')) {
+            throw new Error(await readErrorMessage(response, 'Preparation failed.'));
           }
 
           const blob = await response.blob();

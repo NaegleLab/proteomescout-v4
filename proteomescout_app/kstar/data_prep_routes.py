@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import logging
 import os
+import time
 from collections import Counter
 
 import numpy as np
@@ -256,12 +257,19 @@ def _apply_uniprot_redirect_updates(df, accession_col, accession_out_col, id_sep
     Adds a log column populated only for changed values:
     - Updated Uniprot ID
     """
+    stats = {
+        'candidate_rows': 0,
+        'unique_candidates': 0,
+        'updated_rows': 0,
+        'updated_accessions': 0,
+    }
+
     log_col = 'UniProt ID Update Log'
     if log_col not in df.columns:
         df[log_col] = ''
 
     if accession_col not in df.columns or accession_out_col not in df.columns:
-        return df
+        return df, stats
 
     cache = {}
     for idx, row in df.iterrows():
@@ -276,6 +284,8 @@ def _apply_uniprot_redirect_updates(df, accession_col, accession_out_col, id_sep
         if not _should_check_uniprot_redirect(source_acc):
             continue
 
+        stats['candidate_rows'] += 1
+
         if source_acc not in cache:
             cache[source_acc] = _resolve_uniprot_redirect_accession(source_acc)
 
@@ -286,8 +296,12 @@ def _apply_uniprot_redirect_updates(df, accession_col, accession_out_col, id_sep
         df.at[idx, accession_out_col] = updated_acc
         previous = str(df.at[idx, log_col] or '').strip()
         df.at[idx, log_col] = '; '.join(value for value in [previous, 'Updated Uniprot ID'] if value)
+        stats['updated_rows'] += 1
 
-    return df
+    stats['unique_candidates'] = len(cache)
+    stats['updated_accessions'] = sum(1 for updated in cache.values() if updated)
+
+    return df, stats
 
 
 def _detect_accession_column(df):
@@ -426,6 +440,7 @@ def dataset_prep_preview():
 
 @bp.route('/dataset-prep/run', methods=['POST'])
 def dataset_prep_run():
+    started_at = time.perf_counter()
     file = request.files.get('datasetFile')
     if not file or not file.filename:
         return jsonify({'error': 'Please choose a CSV or TSV file.'}), 400
@@ -441,6 +456,13 @@ def dataset_prep_run():
     except Exception as exc:
         logger.exception('Dataset prep read failed')
         return jsonify({'error': f'Could not parse file: {exc}'}), 400
+
+    logger.info(
+        'Dataset prep run started for %s with %s rows and %s columns.',
+        file.filename,
+        int(df.shape[0]),
+        int(df.shape[1]),
+    )
 
     if accession_col not in df.columns:
         return jsonify({'error': f'Accession column "{accession_col}" was not found in the uploaded file.'}), 400
@@ -485,6 +507,7 @@ def dataset_prep_run():
             return jsonify({'error': f'Species "{coverage_species}" is not available in the ProteomeScout data.'}), 400
 
     try:
+        id_conversion_started = time.perf_counter()
         converted_df, missing_rows = automatic_id_conversion(
             df,
             accession_col=accession_col,
@@ -493,6 +516,13 @@ def dataset_prep_run():
             remove_unmapped=remove_unmapped,
             id_sep=accession_separator,
         )
+        logger.info(
+            'Dataset prep ID conversion finished in %.2fs; %s rows remain, %s rows unmapped.',
+            time.perf_counter() - id_conversion_started,
+            int(converted_df.shape[0]),
+            int(missing_rows.shape[0]),
+        )
+
         if peptide_mode == 'auto':
             sample_peptides = _sample_strings(converted_df[peptide_col])
             if not peptide_format:
@@ -505,6 +535,7 @@ def dataset_prep_run():
         if peptide_format == 'annotated' and not peptide_indicator:
             return jsonify({'error': 'Annotated peptide format requires an indicator value.'}), 400
 
+        peptide_format_started = time.perf_counter()
         converted_df = format_peptide_from_df(
             converted_df,
             peptide_col,
@@ -514,15 +545,29 @@ def dataset_prep_run():
             indicator=peptide_indicator,
             after=peptide_after,
         )
+        logger.info(
+            'Dataset prep peptide formatting finished in %.2fs.',
+            time.perf_counter() - peptide_format_started,
+        )
+
         if 'Accession' in converted_df.columns:
             converted_df = converted_df.rename(columns={'Accession': 'UniProt Accession'})
 
         if 'UniProt Accession' in converted_df.columns:
-            converted_df = _apply_uniprot_redirect_updates(
+            redirect_started = time.perf_counter()
+            converted_df, redirect_stats = _apply_uniprot_redirect_updates(
                 converted_df,
                 accession_col='UniProt Accession',
                 accession_out_col='UniProt Accession',
                 id_sep=accession_separator,
+            )
+            logger.info(
+                'Dataset prep redirect checks finished in %.2fs; candidate rows=%s, unique accessions=%s, updated rows=%s, updated accessions=%s.',
+                time.perf_counter() - redirect_started,
+                redirect_stats['candidate_rows'],
+                redirect_stats['unique_candidates'],
+                redirect_stats['updated_rows'],
+                redirect_stats['updated_accessions'],
             )
 
         from proteomeScoutAPI import ProteomicDataset
@@ -545,6 +590,7 @@ def dataset_prep_run():
         if peptide_for_annotation not in converted_df.columns:
             return jsonify({'error': 'Prepared dataset is missing a peptide column for annotation.'}), 400
 
+        annotation_started = time.perf_counter()
         dataset = ProteomicDataset(
             converted_df,
             accession_col=accession_for_annotation,
@@ -553,8 +599,13 @@ def dataset_prep_run():
             GO_terms=True,
         )
         dataset.annotate_dataset()
+        logger.info(
+            'Dataset prep initial annotation finished in %.2fs.',
+            time.perf_counter() - annotation_started,
+        )
 
         if update_max_coverage:
+            coverage_started = time.perf_counter()
             failed_mask = _accession_not_found_mask(dataset.dataset)
             remap_by_key = {}
 
@@ -586,6 +637,7 @@ def dataset_prep_run():
             if remapped_count > 0:
                 remap_df = converted_df.copy()
                 remap_df['UniProt for Maximal Coverage'] = remapped_accessions
+                reannotation_started = time.perf_counter()
                 remap_dataset = ProteomicDataset(
                     remap_df,
                     accession_col='UniProt for Maximal Coverage',
@@ -595,6 +647,11 @@ def dataset_prep_run():
                 )
                 remap_dataset.annotate_dataset()
                 dataset = remap_dataset
+                logger.info(
+                    'Dataset prep maximal-coverage re-annotation finished in %.2fs for %s remapped rows.',
+                    time.perf_counter() - reannotation_started,
+                    remapped_count,
+                )
             else:
                 dataset.dataset['UniProt for Maximal Coverage'] = _project_remapped_accessions(
                     dataset.dataset,
@@ -602,6 +659,12 @@ def dataset_prep_run():
                     peptide_for_annotation,
                     remap_by_key,
                 )
+
+            logger.info(
+                'Dataset prep maximal-coverage phase finished in %.2fs with %s remapped rows.',
+                time.perf_counter() - coverage_started,
+                remapped_count,
+            )
 
         _resolve_annotation_duplicates(dataset.dataset)
         _normalize_spyc_prediction_columns(dataset.dataset)
@@ -624,6 +687,13 @@ def dataset_prep_run():
     except Exception as exc:
         logger.exception('Dataset prep run failed')
         return jsonify({'error': f'Dataset preparation failed: {exc}'}), 500
+
+    logger.info(
+        'Dataset prep run completed in %.2fs with %s output rows and %s output columns.',
+        time.perf_counter() - started_at,
+        int(converted_df.shape[0]),
+        int(converted_df.shape[1]),
+    )
 
     out = io.StringIO()
     converted_df.to_csv(out, index=False)
