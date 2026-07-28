@@ -485,6 +485,20 @@ def dataset_prep_run():
     if peptide_col not in df.columns:
         return jsonify({'error': f'Peptide column "{peptide_col}" was not found in the uploaded file.'}), 400
 
+    original_accession_backup_col = None
+    if accession_col in df.columns:
+        original_accession_backup_col = f'Original {accession_col}'
+        if original_accession_backup_col in df.columns:
+            suffix = 2
+            while f'{original_accession_backup_col} {suffix}' in df.columns:
+                suffix += 1
+            original_accession_backup_col = f'{original_accession_backup_col} {suffix}'
+        df[original_accession_backup_col] = df[accession_col]
+        logger.info(
+            'Dataset prep preserved input accession values in column "%s".',
+            original_accession_backup_col,
+        )
+
     # Remove Excel-inserted '=' formula markers before peptide processing.
     df[peptide_col] = df[peptide_col].apply(_normalize_padded_centered_peptide)
 
