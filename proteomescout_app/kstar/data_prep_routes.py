@@ -304,6 +304,40 @@ def _apply_uniprot_redirect_updates(df, accession_col, accession_out_col, id_sep
     return df, stats
 
 
+def _append_log_message(df, mask, log_col, message):
+    """Append a semicolon-delimited message to log_col for rows in mask."""
+    if log_col not in df.columns:
+        df[log_col] = ''
+
+    def _append(existing):
+        current = '' if pd.isna(existing) else str(existing).strip()
+        if message in {part.strip() for part in current.split(';') if part.strip()}:
+            return current
+        return '; '.join(part for part in [current, message] if part)
+
+    df.loc[mask, log_col] = df.loc[mask, log_col].apply(_append)
+
+
+def _replace_log_message(df, mask, log_col, old_message, new_message):
+    """Replace one semicolon-delimited log message with another for rows in mask."""
+    if log_col not in df.columns:
+        return
+
+    def _replace(existing):
+        current = '' if pd.isna(existing) else str(existing).strip()
+        if not current:
+            return current
+
+        parts = [part.strip() for part in current.split(';') if part.strip()]
+        replaced = [new_message if part == old_message else part for part in parts]
+
+        # Keep order while removing duplicates.
+        deduped = list(dict.fromkeys(replaced))
+        return '; '.join(deduped)
+
+    df.loc[mask, log_col] = df.loc[mask, log_col].apply(_replace)
+
+
 def _detect_accession_column(df):
     best_column = None
     best_score = -1.0
@@ -499,6 +533,9 @@ def dataset_prep_run():
             original_accession_backup_col,
         )
 
+    row_id_col = '__dataset_prep_row_id'
+    df[row_id_col] = np.arange(len(df))
+
     # Remove Excel-inserted '=' formula markers before peptide processing.
     df[peptide_col] = df[peptide_col].apply(_normalize_padded_centered_peptide)
 
@@ -514,7 +551,7 @@ def dataset_prep_run():
 
     accession_separator = (request.form.get('accessionSeparator') or '').strip() or None
     keep_isoforms = request.form.get('keepIsoforms', '0') == '1'
-    remove_unmapped = request.form.get('removeUnmapped', '1') == '1'
+    remove_unmapped_requested = request.form.get('removeUnmapped', '1') == '1'
     taxon_raw = (request.form.get('taxonId') or '9606').strip()
     try:
         taxon_id = int(taxon_raw)
@@ -538,14 +575,42 @@ def dataset_prep_run():
 
     try:
         id_conversion_started = time.perf_counter()
-        converted_df, missing_rows = automatic_id_conversion(
+        if remove_unmapped_requested:
+            logger.info(
+                'Dataset prep keep-unmapped policy active: removeUnmapped request was ignored and unmapped rows will be retained.'
+            )
+
+        converted_subset_df, _ = automatic_id_conversion(
             df,
             accession_col=accession_col,
             taxonID=taxon_id,
             keep_isoform_info=keep_isoforms,
-            remove_unmapped=remove_unmapped,
+            remove_unmapped=False,
             id_sep=accession_separator,
         )
+
+        converted_df = df.copy()
+        if row_id_col in converted_subset_df.columns:
+            subset_for_merge = converted_subset_df[[row_id_col]].copy()
+            if 'Accession' in converted_subset_df.columns:
+                subset_for_merge['__mapped_uniprot_accession'] = converted_subset_df['Accession']
+            if 'Original Accession Type' in converted_subset_df.columns:
+                subset_for_merge['Original Accession Type'] = converted_subset_df['Original Accession Type']
+
+            converted_df = converted_df.merge(subset_for_merge, on=row_id_col, how='left')
+        else:
+            converted_df['__mapped_uniprot_accession'] = np.nan
+
+        if 'Original Accession Type' not in converted_df.columns:
+            converted_df['Original Accession Type'] = ''
+
+        if '__mapped_uniprot_accession' not in converted_df.columns:
+            converted_df['__mapped_uniprot_accession'] = np.nan
+
+        converted_df['UniProt Accession'] = converted_df['__mapped_uniprot_accession']
+        converted_df = converted_df.drop(columns=['__mapped_uniprot_accession'])
+
+        missing_rows = converted_df[converted_df['UniProt Accession'].isna()].copy()
         logger.info(
             'Dataset prep ID conversion finished in %.2fs; %s rows remain, %s rows unmapped.',
             time.perf_counter() - id_conversion_started,
@@ -580,8 +645,14 @@ def dataset_prep_run():
             time.perf_counter() - peptide_format_started,
         )
 
-        if 'Accession' in converted_df.columns:
-            converted_df = converted_df.rename(columns={'Accession': 'UniProt Accession'})
+        if 'UniProt Accession' in converted_df.columns:
+            log_col = 'UniProt ID Update Log'
+            mapped_series = converted_df['UniProt Accession']
+            mapped_text = mapped_series.fillna('').astype(str).str.strip()
+            unmapped_mask = mapped_text.eq('')
+            # Keep unmapped rows and mark the mapping failure explicitly.
+            converted_df.loc[unmapped_mask, 'UniProt Accession'] = ''
+            _append_log_message(converted_df, unmapped_mask, log_col, 'Could not map accession')
 
         if 'UniProt Accession' in converted_df.columns:
             redirect_started = time.perf_counter()
@@ -634,6 +705,8 @@ def dataset_prep_run():
             time.perf_counter() - annotation_started,
         )
 
+        max_coverage_changed_flags = [False] * len(converted_df)
+
         if update_max_coverage:
             coverage_started = time.perf_counter()
             failed_mask = _accession_not_found_mask(dataset.dataset)
@@ -659,9 +732,12 @@ def dataset_prep_run():
                 remap_by_key,
             )
             remapped_count = 0
+            max_coverage_changed_flags = []
             for original, remapped in zip(converted_df[accession_for_annotation].tolist(), remapped_accessions):
                 original_text = '' if pd.isna(original) else str(original).strip()
-                if remapped != original_text:
+                was_changed = bool(remapped) and remapped != original_text
+                max_coverage_changed_flags.append(was_changed)
+                if was_changed:
                     remapped_count += 1
 
             if remapped_count > 0:
@@ -698,13 +774,74 @@ def dataset_prep_run():
 
         _resolve_annotation_duplicates(dataset.dataset)
         _normalize_spyc_prediction_columns(dataset.dataset)
+
+        if (
+            original_accession_backup_col
+            and original_accession_backup_col in converted_df.columns
+            and original_accession_backup_col not in dataset.dataset.columns
+            and len(dataset.dataset) == len(converted_df)
+        ):
+            dataset.dataset[original_accession_backup_col] = converted_df[original_accession_backup_col].values
+
+        if (
+            'UniProt ID Update Log' in converted_df.columns
+            and len(dataset.dataset) == len(converted_df)
+        ):
+            pre_annotation_logs = converted_df['UniProt ID Update Log'].fillna('').astype(str)
+            if 'UniProt ID Update Log' in dataset.dataset.columns:
+                annotation_logs = dataset.dataset['UniProt ID Update Log'].fillna('').astype(str)
+                dataset.dataset['UniProt ID Update Log'] = [
+                    '; '.join(part for part in [left.strip(), right.strip()] if part)
+                    for left, right in zip(pre_annotation_logs.tolist(), annotation_logs.tolist())
+                ]
+            else:
+                dataset.dataset['UniProt ID Update Log'] = pre_annotation_logs
+
         if 'UniProt for Maximal Coverage' in dataset.dataset.columns and 'UniProt Accession' in dataset.dataset.columns:
             dataset.dataset['UniProt Accession'] = dataset.dataset['UniProt for Maximal Coverage']
-            if 'UniProt ID Update Log' in dataset.dataset.columns:
-                existing_log = dataset.dataset['UniProt ID Update Log'].fillna('').astype(str)
-                dataset.dataset['UniProt ID Update Log'] = existing_log.apply(
-                    lambda value: '; '.join(part for part in [value.strip(), 'Updated for maximal coverage'] if part)
+
+            if len(max_coverage_changed_flags) == len(dataset.dataset):
+                changed_mask = pd.Series(max_coverage_changed_flags, index=dataset.dataset.index)
+                log_col = 'UniProt ID Update Log'
+                existing_logs = dataset.dataset.get(log_col, pd.Series([''] * len(dataset.dataset), index=dataset.dataset.index))
+                had_unmapped_note_mask = changed_mask & existing_logs.fillna('').astype(str).str.contains(
+                    'Could not map accession',
+                    regex=False,
                 )
+
+                # If maximal coverage found a sequence-based match, replace the stale unmapped note.
+                _replace_log_message(
+                    dataset.dataset,
+                    had_unmapped_note_mask,
+                    log_col,
+                    'Could not map accession',
+                    'Match found by sequence search',
+                )
+
+                _append_log_message(
+                    dataset.dataset,
+                    changed_mask & ~had_unmapped_note_mask,
+                    log_col,
+                    'Updated for maximal coverage',
+                )
+
+        if 'UniProt Accession' in dataset.dataset.columns:
+            final_unmapped_mask = dataset.dataset['UniProt Accession'].fillna('').astype(str).str.strip().eq('')
+            dataset.dataset.loc[final_unmapped_mask, 'UniProt Accession'] = ''
+            _append_log_message(dataset.dataset, final_unmapped_mask, 'UniProt ID Update Log', 'Could not map accession')
+
+            # Rows that were initially unmapped but eventually resolved should reflect the recovery.
+            final_mapped_mask = ~final_unmapped_mask
+            _replace_log_message(
+                dataset.dataset,
+                final_mapped_mask,
+                'UniProt ID Update Log',
+                'Could not map accession',
+                'Match found by sequence search',
+            )
+
+        if row_id_col in dataset.dataset.columns:
+            dataset.dataset = dataset.dataset.drop(columns=[row_id_col])
         if (
             'modification_sites' in dataset.dataset.columns
             and 'site_in_activation_loop' not in dataset.dataset.columns
