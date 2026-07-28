@@ -125,6 +125,11 @@ def _configure_api_data_dir():
 
 @bp.route('/')
 def landing():
+    return render_template('annotate/processing.html')
+
+
+@bp.route('/dataset-annotation')
+def dataset_annotation():
     return render_template('annotate/landing.html', species_options=get_species_options())
 
 
