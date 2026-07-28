@@ -430,6 +430,19 @@
         return fallbackMessage || `Request failed (${statusText}).`;
       }
 
+      async function readJsonPayload(response, fallbackMessage) {
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) {
+          throw new Error(await readErrorMessage(response, fallbackMessage));
+        }
+
+        try {
+          return await response.json();
+        } catch (error) {
+          throw new Error(await readErrorMessage(response, fallbackMessage));
+        }
+      }
+
       function updateSummary(response) {
         const accessionText = response.accessionColumn
           ? `Suggested accession column: <strong>${response.accessionColumn}</strong>`
@@ -492,7 +505,7 @@
 
         try {
           const response = await fetch(ROUTES.preview, { method: 'POST', body: formData });
-          const payload = await response.json();
+          const payload = await readJsonPayload(response, 'Preview failed.');
           if (!response.ok) {
             throw new Error(payload.error || `Preview failed (${response.status} ${response.statusText}).`);
           }

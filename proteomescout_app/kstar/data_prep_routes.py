@@ -392,9 +392,17 @@ def dataset_prep():
 
 @bp.route('/dataset-prep/preview', methods=['POST'])
 def dataset_prep_preview():
+    started_at = time.perf_counter()
     file = request.files.get('datasetFile')
     if not file or not file.filename:
         return jsonify({'error': 'Please choose a CSV or TSV file.'}), 400
+
+    upload_size = request.content_length
+    logger.info(
+        'Dataset prep preview started for %s (request bytes=%s).',
+        file.filename,
+        upload_size if upload_size is not None else 'unknown',
+    )
 
     try:
         df = _read_dataframe(file)
@@ -419,6 +427,14 @@ def dataset_prep_preview():
         warnings.append('No strong peptide-column match was found. Please choose one manually.')
     if not data_columns:
         warnings.append('No numeric-only data columns were detected.')
+
+    logger.info(
+        'Dataset prep preview completed in %.2fs for %s with %s rows and %s columns.',
+        time.perf_counter() - started_at,
+        file.filename,
+        int(df.shape[0]),
+        int(df.shape[1]),
+    )
 
     return jsonify({
         'columns': df.columns.tolist(),
