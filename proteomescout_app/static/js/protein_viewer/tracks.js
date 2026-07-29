@@ -570,7 +570,7 @@ SpyCPredictionTrack.prototype._visual_style = function(prediction) {
 
     if (category === 'confident binder') {
         return {
-            fill: '#1d1d1d',
+            fill: '#4169E1',
             stroke: '#000000',
             opacity: 0.95,
             dash: null,
@@ -580,8 +580,8 @@ SpyCPredictionTrack.prototype._visual_style = function(prediction) {
 
     if (category === 'confident non-binder') {
         return {
-            fill: '#c62828',
-            stroke: '#7f1d1d',
+            fill: '#DC143C',
+            stroke: '#000000',
             opacity: 0.95,
             dash: null,
             class_label: 'Confident non-binder',
@@ -589,9 +589,9 @@ SpyCPredictionTrack.prototype._visual_style = function(prediction) {
     }
 
     return {
-        fill: '#8a8a8a',
-        stroke: '#4f4f4f',
-        opacity: 0.6,
+        fill: '#9CA3AF',
+        stroke: '#6B7280',
+        opacity: 0.65,
         dash: '2,1',
         class_label: 'Low-confidence',
     };
