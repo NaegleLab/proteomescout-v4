@@ -276,6 +276,27 @@
 
     <div class="prep-card">
       <h2><span class="badge bg-secondary me-2">4</span>Run and Download</h2>
+      <p class="text-muted small mb-3">
+        ProteomeScout annotation is always integrated after preparation.
+      </p>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="updateMaxCoverage" checked />
+        <label class="form-check-label" for="updateMaxCoverage">
+          Update accessions for maximal coverage
+        </label>
+      </div>
+      <div class="row g-3 mb-3" id="coverageSpeciesRow">
+        <div class="col-lg-8">
+          <label for="coverageSpecies" class="form-label">Species</label>
+          <select id="coverageSpecies" class="form-select">
+            <option value="">— select —</option>
+            {% for species in species_options %}
+            <option value="{{ species }}">{{ species }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Required when maximal coverage is enabled.</div>
+        </div>
+      </div>
       <div class="row g-3 align-items-end">
         <div class="col-lg-8">
           <label for="outputName" class="form-label">Output file name</label>
@@ -322,6 +343,8 @@
       const peptideSummary = document.getElementById('peptideSummary');
       const outputName = document.getElementById('outputName');
       const dataColumnsContainer = document.getElementById('dataColumnsContainer');
+      const updateMaxCoverage = document.getElementById('updateMaxCoverage');
+      const coverageSpecies = document.getElementById('coverageSpecies');
 
       let activeFile = null;
 
@@ -368,6 +391,56 @@
 
       function refreshDataControls() {
         dataColumnsContainer.classList.toggle('hidden', !prefixDataColumns.checked);
+      }
+
+      function refreshCoverageControls() {
+        coverageSpecies.disabled = !updateMaxCoverage.checked;
+      }
+
+      async function readErrorMessage(response, fallbackMessage) {
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        const statusText = `${response.status} ${response.statusText}`.trim();
+
+        if (contentType.includes('application/json')) {
+          try {
+            const payload = await response.json();
+            if (payload && payload.error) {
+              return payload.error;
+            }
+          } catch (error) {
+            return fallbackMessage || `Request failed (${statusText}).`;
+          }
+        }
+
+        let responseText = '';
+        try {
+          responseText = (await response.text()).trim();
+        } catch (error) {
+          responseText = '';
+        }
+
+        if (responseText.startsWith('<')) {
+          return `Request failed (${statusText}). The server returned an HTML error page instead of JSON or CSV, which usually means an upstream timeout or proxy error.`;
+        }
+
+        if (responseText) {
+          return `Request failed (${statusText}): ${responseText.slice(0, 300)}`;
+        }
+
+        return fallbackMessage || `Request failed (${statusText}).`;
+      }
+
+      async function readJsonPayload(response, fallbackMessage) {
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) {
+          throw new Error(await readErrorMessage(response, fallbackMessage));
+        }
+
+        try {
+          return await response.json();
+        } catch (error) {
+          throw new Error(await readErrorMessage(response, fallbackMessage));
+        }
       }
 
       function updateSummary(response) {
@@ -432,9 +505,9 @@
 
         try {
           const response = await fetch(ROUTES.preview, { method: 'POST', body: formData });
-          const payload = await response.json();
+          const payload = await readJsonPayload(response, 'Preview failed.');
           if (!response.ok) {
-            throw new Error(payload.error || 'Preview failed.');
+            throw new Error(payload.error || `Preview failed (${response.status} ${response.statusText}).`);
           }
 
           populateFromPreview(payload);
@@ -447,6 +520,10 @@
 
       async function runPrep() {
         if (!activeFile) return;
+        if (updateMaxCoverage.checked && !coverageSpecies.value) {
+          runStatus.innerHTML = '<span class="text-danger">Please select a species when maximal coverage is enabled.</span>';
+          return;
+        }
 
         const formData = new FormData();
         formData.append('datasetFile', activeFile);
@@ -460,6 +537,8 @@
         formData.append('peptideFormat', peptideFormat.value);
         formData.append('peptideIndicator', peptideIndicator.value.trim());
         formData.append('peptideAfter', peptideAfter.checked ? '1' : '0');
+        formData.append('updateMaxCoverage', updateMaxCoverage.checked ? '1' : '0');
+        formData.append('coverageSpecies', coverageSpecies.value);
         formData.append('prefixDataColumns', prefixDataColumns.checked ? '1' : '0');
         Array.from(dataColumns.selectedOptions).forEach(option => {
           formData.append('dataColumns', option.value);
@@ -470,9 +549,13 @@
 
         try {
           const response = await fetch(ROUTES.run, { method: 'POST', body: formData });
+          const contentType = (response.headers.get('content-type') || '').toLowerCase();
           if (!response.ok) {
-            const payload = await response.json();
-            throw new Error(payload.error || 'Preparation failed.');
+            throw new Error(await readErrorMessage(response, 'Preparation failed.'));
+          }
+
+          if (contentType.includes('text/html') || contentType.includes('application/json')) {
+            throw new Error(await readErrorMessage(response, 'Preparation failed.'));
           }
 
           const blob = await response.blob();
@@ -500,6 +583,7 @@
 
         refreshPeptideControls();
         refreshDataControls();
+        refreshCoverageControls();
 
         fileInput.addEventListener('change', () => {
           activeFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
@@ -508,13 +592,14 @@
             runBtn.disabled = true;
             return;
           }
-          outputName.value = `${activeFile.name.replace(/\.(csv|tsv|txt)$/i, '')}_kstar_prepared.csv`;
+          outputName.value = `${activeFile.name.replace(/\.(csv|tsv|txt)$/i, '')}_kstar_prepared_annotated.csv`;
           previewDataset();
         });
 
         peptideMode.addEventListener('change', refreshPeptideControls);
         peptideFormat.addEventListener('change', refreshPeptideControls);
         prefixDataColumns.addEventListener('change', refreshDataControls);
+        updateMaxCoverage.addEventListener('change', refreshCoverageControls);
         runBtn.addEventListener('click', runPrep);
       });
     })();

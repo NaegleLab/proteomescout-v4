@@ -190,27 +190,25 @@
       <h2><span class="badge bg-secondary me-2">3</span>Annotation Options</h2>
       <div class="mb-2">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="findSite" checked />
-          <label class="form-check-label" for="findSite">
-            Find modification sites
+          <input class="form-check-input" type="checkbox" id="updateMaxCoverage" checked />
+          <label class="form-check-label" for="updateMaxCoverage">
+            Update my accessions for maximal coverage
             <span class="text-muted small">
-              – locates each modified residue within the full protein sequence and
-              adds position, domain, macro-molecular structure, and secondary
-              structure context
+              – when enabled, failed mapping rows are remapped using peptide + species and the top Protein Search match
             </span>
           </label>
         </div>
       </div>
-      <div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="goTerms" checked />
-          <label class="form-check-label" for="goTerms">
-            Include GO terms
-            <span class="text-muted small">
-              – appends Gene Ontology terms (Molecular Function, Biological
-              Process, Cellular Component) to each row
-            </span>
-          </label>
+      <div class="row g-3" id="coverageSpeciesRow">
+        <div class="col-md-8">
+          <label for="coverageSpecies" class="form-label">Species</label>
+          <select id="coverageSpecies" class="form-select">
+            <option value="">— select —</option>
+            {% for species in species_options %}
+            <option value="{{ species }}">{{ species }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Required when maximal coverage is enabled.</div>
         </div>
       </div>
     </div>
@@ -247,8 +245,8 @@
       const runSection    = document.getElementById('runSection');
       const accessionSel  = document.getElementById('accessionCol');
       const peptideSel    = document.getElementById('peptideCol');
-      const findSiteChk   = document.getElementById('findSite');
-      const goTermsChk    = document.getElementById('goTerms');
+      const updateMaxCoverageChk = document.getElementById('updateMaxCoverage');
+      const coverageSpeciesSel = document.getElementById('coverageSpecies');
       const runBtn        = document.getElementById('runBtn');
       const statusMsg     = document.getElementById('statusMsg');
 
@@ -291,9 +289,15 @@
       });
 
       // Re-check run button whenever selections change
-      [accessionSel, peptideSel].forEach(el => {
+      function refreshCoverageControls() {
+        coverageSpeciesSel.disabled = !updateMaxCoverageChk.checked;
+        updateRunBtn();
+      }
+
+      [accessionSel, peptideSel, coverageSpeciesSel].forEach(el => {
         el.addEventListener('change', updateRunBtn);
       });
+      updateMaxCoverageChk.addEventListener('change', refreshCoverageControls);
 
       // ------------------------------------------------------------------ //
       // Step 4: annotate and download                                       //
@@ -318,8 +322,8 @@
         fd.append('datasetFile', file);
         fd.append('accessionCol', accCol);
         fd.append('peptideCol', pepCol);
-        fd.append('findSite', findSiteChk.checked ? '1' : '0');
-        fd.append('goTerms',  goTermsChk.checked  ? '1' : '0');
+        fd.append('updateMaxCoverage', updateMaxCoverageChk.checked ? '1' : '0');
+        fd.append('coverageSpecies', coverageSpeciesSel.value);
 
         try {
           const resp = await fetch(ROUTES.run, { method: 'POST', body: fd });
@@ -386,7 +390,8 @@
       }
 
       function updateRunBtn() {
-        const ok = accessionSel.value && peptideSel.value && fileInput.files.length > 0;
+        const coverageOk = !updateMaxCoverageChk.checked || !!coverageSpeciesSel.value;
+        const ok = accessionSel.value && peptideSel.value && fileInput.files.length > 0 && coverageOk;
         runBtn.disabled = !ok;
       }
 
@@ -398,6 +403,8 @@
         [columnSection, optionsSection, runSection].forEach(el => el.classList.remove('visible'));
         statusMsg.innerHTML = '';
       }
+
+      refreshCoverageControls();
 
       function setStatus(level, html) {
         const colours = { success: 'text-success', danger: 'text-danger', warning: 'text-warning', info: 'text-secondary' };

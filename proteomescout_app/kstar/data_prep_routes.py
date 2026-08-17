@@ -5,14 +5,17 @@ from __future__ import annotations
 import io
 import logging
 import os
+import time
 from collections import Counter
 
 import numpy as np
 import pandas as pd
-from flask import Response, jsonify, render_template, request
+import requests
+from flask import Response, current_app, jsonify, render_template, request
 
 from proteomescout_app.kstar import bp
 from proteomescout_app.dataset_processing.accessions import automatic_id_conversion
+from proteomescout_app.dataset_processing.accessions import identify_accession_type
 from proteomescout_app.dataset_processing.accessions import identify_most_common_accession_type
 from proteomescout_app.dataset_processing.peptides import (
     PeptideSequenceError,
@@ -20,6 +23,7 @@ from proteomescout_app.dataset_processing.peptides import (
     detect_most_common_format,
     format_peptide_from_df,
 )
+from proteomescout_app.protein_data import get_maximal_coverage_accession, get_species_options
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +57,23 @@ def _read_dataframe(file_obj):
         sample = raw[:4096].decode('utf-8', errors='replace')
         sep = '\t' if sample.count('\t') >= sample.count(',') else ','
     return pd.read_csv(io.BytesIO(raw), sep=sep)
+
+
+def _configure_api_data_dir():
+    """Point proteomeScoutAPI at the data directory configured in the app."""
+    import proteomeScoutAPI.config as pscout_config
+
+    configured_path = current_app.config.get(
+        'PROTEOMESCOUT_API_DATA_DIR',
+        current_app.config.get('DATA_ROOT_DIR', 'data'),
+    )
+
+    resolved = os.path.abspath(configured_path)
+    if os.path.isfile(os.path.join(resolved, 'data.tsv')):
+        resolved = os.path.dirname(resolved)
+
+    pscout_config.DATASET_DIR = resolved
+    pscout_config.UPDATE = False
 
 
 def _is_numeric_or_nan(series):
@@ -98,6 +119,225 @@ def _sample_strings(series, limit=200):
     return values
 
 
+def _sanitize_excel_peptide_value(value):
+    """Remove common Excel formula artifacts from peptide strings.
+
+    Excel may serialize leading dashes as formula-like text such as
+    ="---PEPTIDE". We strip the leading '=' and unwrap matching quotes.
+    """
+    if pd.isna(value):
+        return value
+
+    if not isinstance(value, str):
+        return value
+
+    text = value.strip()
+    while text.startswith('='):
+        text = text[1:].lstrip()
+
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {'"', "'"}:
+        text = text[1:-1]
+
+    return text
+
+
+def _normalize_padded_centered_peptide(value):
+    """Normalize aligned peptides that use terminal padding characters.
+
+    If a peptide is uppercase/aligned with terminal padding (`_`, `-`, `.`),
+    lowercase the amino acid nearest the center position *before* trimming
+    padding so the modification site is preserved.
+    """
+    if pd.isna(value):
+        return value
+
+    if not isinstance(value, str):
+        return value
+
+    text = _sanitize_excel_peptide_value(value)
+    if not isinstance(text, str):
+        return text
+
+    pad_chars = {'_', '-', '.'}
+    has_terminal_padding = bool(text) and (text[0] in pad_chars or text[-1] in pad_chars)
+    if not has_terminal_padding:
+        return text
+
+    alpha_positions = [idx for idx, char in enumerate(text) if char.isalpha()]
+    if not alpha_positions:
+        return text.strip('_.-')
+
+    alpha_chars = [text[idx] for idx in alpha_positions]
+    is_all_uppercase_alpha = all(char.isupper() for char in alpha_chars)
+    if is_all_uppercase_alpha:
+        center = (len(text) - 1) / 2
+        target_idx = min(alpha_positions, key=lambda idx: abs(idx - center))
+        text_chars = list(text)
+        text_chars[target_idx] = text_chars[target_idx].lower()
+        text = ''.join(text_chars)
+
+    return text.strip('_.-')
+
+
+def _extract_primary_accession(value, id_sep=None):
+    if pd.isna(value):
+        return ''
+
+    text = str(value).strip()
+    if not text:
+        return ''
+
+    if id_sep and id_sep in text:
+        return text.split(id_sep)[0].strip()
+
+    for sep in (';', ','):
+        if sep in text:
+            return text.split(sep)[0].strip()
+
+    return text
+
+
+def _resolve_uniprot_redirect_accession(accession):
+    """Resolve UniProt accession redirects and return updated accession if changed."""
+    if not accession:
+        return None
+
+    url = f'https://rest.uniprot.org/uniprotkb/{accession}.json'
+    try:
+        response = requests.get(url, timeout=20, allow_redirects=True)
+    except Exception:
+        return None
+
+    if not response.ok:
+        return None
+
+    try:
+        payload = response.json()
+    except Exception:
+        return None
+
+    updated = str(payload.get('primaryAccession', '')).strip()
+    if updated and updated != accession:
+        return updated
+
+    if response.history:
+        final_path = response.url.rsplit('/', 1)[-1]
+        redirected = final_path.split('.', 1)[0].strip()
+        if redirected and redirected != accession:
+            return redirected
+
+    return None
+
+
+def _should_check_uniprot_redirect(accession):
+    """Return True only for likely non-canonical accessions.
+
+    Criteria:
+    - Does not start with O, P, or Q
+    - OR has isoform suffix like -1, -2, ...
+    """
+    if not accession:
+        return False
+
+    acc = str(accession).strip().upper()
+    if not acc:
+        return False
+
+    if '-' in acc:
+        parts = acc.rsplit('-', 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            return True
+
+    return not acc.startswith(('O', 'P', 'Q'))
+
+
+def _apply_uniprot_redirect_updates(df, accession_col, accession_out_col, id_sep=None):
+    """Update UniProt accessions based on UniProt redirect behavior.
+
+    Adds a log column populated only for changed values:
+    - Updated Uniprot ID
+    """
+    stats = {
+        'candidate_rows': 0,
+        'unique_candidates': 0,
+        'updated_rows': 0,
+        'updated_accessions': 0,
+    }
+
+    log_col = 'UniProt ID Update Log'
+    if log_col not in df.columns:
+        df[log_col] = ''
+
+    if accession_col not in df.columns or accession_out_col not in df.columns:
+        return df, stats
+
+    cache = {}
+    for idx, row in df.iterrows():
+        source_acc = _extract_primary_accession(row.get(accession_col), id_sep=id_sep)
+        if not source_acc:
+            continue
+
+        acc_type = identify_accession_type(source_acc)
+        if acc_type not in {'UniProtKB', 'UniProtKB_AC-ID'}:
+            continue
+
+        if not _should_check_uniprot_redirect(source_acc):
+            continue
+
+        stats['candidate_rows'] += 1
+
+        if source_acc not in cache:
+            cache[source_acc] = _resolve_uniprot_redirect_accession(source_acc)
+
+        updated_acc = cache[source_acc]
+        if not updated_acc:
+            continue
+
+        df.at[idx, accession_out_col] = updated_acc
+        previous = str(df.at[idx, log_col] or '').strip()
+        df.at[idx, log_col] = '; '.join(value for value in [previous, 'Updated Uniprot ID'] if value)
+        stats['updated_rows'] += 1
+
+    stats['unique_candidates'] = len(cache)
+    stats['updated_accessions'] = sum(1 for updated in cache.values() if updated)
+
+    return df, stats
+
+
+def _append_log_message(df, mask, log_col, message):
+    """Append a semicolon-delimited message to log_col for rows in mask."""
+    if log_col not in df.columns:
+        df[log_col] = ''
+
+    def _append(existing):
+        current = '' if pd.isna(existing) else str(existing).strip()
+        if message in {part.strip() for part in current.split(';') if part.strip()}:
+            return current
+        return '; '.join(part for part in [current, message] if part)
+
+    df.loc[mask, log_col] = df.loc[mask, log_col].apply(_append)
+
+
+def _replace_log_message(df, mask, log_col, old_message, new_message):
+    """Replace one semicolon-delimited log message with another for rows in mask."""
+    if log_col not in df.columns:
+        return
+
+    def _replace(existing):
+        current = '' if pd.isna(existing) else str(existing).strip()
+        if not current:
+            return current
+
+        parts = [part.strip() for part in current.split(';') if part.strip()]
+        replaced = [new_message if part == old_message else part for part in parts]
+
+        # Keep order while removing duplicates.
+        deduped = list(dict.fromkeys(replaced))
+        return '; '.join(deduped)
+
+    df.loc[mask, log_col] = df.loc[mask, log_col].apply(_replace)
+
+
 def _detect_accession_column(df):
     best_column = None
     best_score = -1.0
@@ -129,7 +369,11 @@ def _detect_peptide_column(df):
     best_score = -1.0
     best_format = None
     for column in df.columns:
-        sample = _sample_strings(df[column], limit=100)
+        sample = [
+            _normalize_padded_centered_peptide(value)
+            for value in _sample_strings(df[column], limit=100)
+        ]
+        sample = [value for value in sample if isinstance(value, str) and value.strip()]
         if not sample:
             continue
         score = 0.0
@@ -177,14 +421,22 @@ def _detect_peptide_indicator(samples):
 
 @bp.route('/dataset-prep')
 def dataset_prep():
-    return render_template('kstar/dataset_prep.html')
+    return render_template('kstar/dataset_prep.html', species_options=get_species_options())
 
 
 @bp.route('/dataset-prep/preview', methods=['POST'])
 def dataset_prep_preview():
+    started_at = time.perf_counter()
     file = request.files.get('datasetFile')
     if not file or not file.filename:
         return jsonify({'error': 'Please choose a CSV or TSV file.'}), 400
+
+    upload_size = request.content_length
+    logger.info(
+        'Dataset prep preview started for %s (request bytes=%s).',
+        file.filename,
+        upload_size if upload_size is not None else 'unknown',
+    )
 
     try:
         df = _read_dataframe(file)
@@ -210,6 +462,14 @@ def dataset_prep_preview():
     if not data_columns:
         warnings.append('No numeric-only data columns were detected.')
 
+    logger.info(
+        'Dataset prep preview completed in %.2fs for %s with %s rows and %s columns.',
+        time.perf_counter() - started_at,
+        file.filename,
+        int(df.shape[0]),
+        int(df.shape[1]),
+    )
+
     return jsonify({
         'columns': df.columns.tolist(),
         'rowCount': int(df.shape[0]),
@@ -230,6 +490,7 @@ def dataset_prep_preview():
 
 @bp.route('/dataset-prep/run', methods=['POST'])
 def dataset_prep_run():
+    started_at = time.perf_counter()
     file = request.files.get('datasetFile')
     if not file or not file.filename:
         return jsonify({'error': 'Please choose a CSV or TSV file.'}), 400
@@ -246,10 +507,37 @@ def dataset_prep_run():
         logger.exception('Dataset prep read failed')
         return jsonify({'error': f'Could not parse file: {exc}'}), 400
 
+    logger.info(
+        'Dataset prep run started for %s with %s rows and %s columns.',
+        file.filename,
+        int(df.shape[0]),
+        int(df.shape[1]),
+    )
+
     if accession_col not in df.columns:
         return jsonify({'error': f'Accession column "{accession_col}" was not found in the uploaded file.'}), 400
     if peptide_col not in df.columns:
         return jsonify({'error': f'Peptide column "{peptide_col}" was not found in the uploaded file.'}), 400
+
+    original_accession_backup_col = None
+    if accession_col in df.columns:
+        original_accession_backup_col = f'Original {accession_col}'
+        if original_accession_backup_col in df.columns:
+            suffix = 2
+            while f'{original_accession_backup_col} {suffix}' in df.columns:
+                suffix += 1
+            original_accession_backup_col = f'{original_accession_backup_col} {suffix}'
+        df[original_accession_backup_col] = df[accession_col]
+        logger.info(
+            'Dataset prep preserved input accession values in column "%s".',
+            original_accession_backup_col,
+        )
+
+    row_id_col = '__dataset_prep_row_id'
+    df[row_id_col] = np.arange(len(df))
+
+    # Remove Excel-inserted '=' formula markers before peptide processing.
+    df[peptide_col] = df[peptide_col].apply(_normalize_padded_centered_peptide)
 
     prefix_data_columns = request.form.get('prefixDataColumns', '1') == '1'
     selected_data_columns = request.form.getlist('dataColumns')
@@ -263,7 +551,7 @@ def dataset_prep_run():
 
     accession_separator = (request.form.get('accessionSeparator') or '').strip() or None
     keep_isoforms = request.form.get('keepIsoforms', '0') == '1'
-    remove_unmapped = request.form.get('removeUnmapped', '1') == '1'
+    remove_unmapped_requested = request.form.get('removeUnmapped', '1') == '1'
     taxon_raw = (request.form.get('taxonId') or '9606').strip()
     try:
         taxon_id = int(taxon_raw)
@@ -274,16 +562,62 @@ def dataset_prep_run():
     peptide_format = (request.form.get('peptideFormat') or '').strip()
     peptide_indicator = (request.form.get('peptideIndicator') or '').strip() or None
     peptide_after = request.form.get('peptideAfter', '1') == '1'
+    annotate_prepared = True
+    update_max_coverage = request.form.get('updateMaxCoverage', '1') == '1'
+    coverage_species = (request.form.get('coverageSpecies') or '').strip()
+
+    species_options = get_species_options()
+    if update_max_coverage:
+        if not coverage_species:
+            return jsonify({'error': 'Please select a species when maximal coverage is enabled.'}), 400
+        if coverage_species not in species_options:
+            return jsonify({'error': f'Species "{coverage_species}" is not available in the ProteomeScout data.'}), 400
 
     try:
-        converted_df, missing_rows = automatic_id_conversion(
+        id_conversion_started = time.perf_counter()
+        if remove_unmapped_requested:
+            logger.info(
+                'Dataset prep keep-unmapped policy active: removeUnmapped request was ignored and unmapped rows will be retained.'
+            )
+
+        converted_subset_df, _ = automatic_id_conversion(
             df,
             accession_col=accession_col,
             taxonID=taxon_id,
             keep_isoform_info=keep_isoforms,
-            remove_unmapped=remove_unmapped,
+            remove_unmapped=False,
             id_sep=accession_separator,
         )
+
+        converted_df = df.copy()
+        if row_id_col in converted_subset_df.columns:
+            subset_for_merge = converted_subset_df[[row_id_col]].copy()
+            if 'Accession' in converted_subset_df.columns:
+                subset_for_merge['__mapped_uniprot_accession'] = converted_subset_df['Accession']
+            if 'Original Accession Type' in converted_subset_df.columns:
+                subset_for_merge['Original Accession Type'] = converted_subset_df['Original Accession Type']
+
+            converted_df = converted_df.merge(subset_for_merge, on=row_id_col, how='left')
+        else:
+            converted_df['__mapped_uniprot_accession'] = np.nan
+
+        if 'Original Accession Type' not in converted_df.columns:
+            converted_df['Original Accession Type'] = ''
+
+        if '__mapped_uniprot_accession' not in converted_df.columns:
+            converted_df['__mapped_uniprot_accession'] = np.nan
+
+        converted_df['UniProt Accession'] = converted_df['__mapped_uniprot_accession']
+        converted_df = converted_df.drop(columns=['__mapped_uniprot_accession'])
+
+        missing_rows = converted_df[converted_df['UniProt Accession'].isna()].copy()
+        logger.info(
+            'Dataset prep ID conversion finished in %.2fs; %s rows remain, %s rows unmapped.',
+            time.perf_counter() - id_conversion_started,
+            int(converted_df.shape[0]),
+            int(missing_rows.shape[0]),
+        )
+
         if peptide_mode == 'auto':
             sample_peptides = _sample_strings(converted_df[peptide_col])
             if not peptide_format:
@@ -296,6 +630,7 @@ def dataset_prep_run():
         if peptide_format == 'annotated' and not peptide_indicator:
             return jsonify({'error': 'Annotated peptide format requires an indicator value.'}), 400
 
+        peptide_format_started = time.perf_counter()
         converted_df = format_peptide_from_df(
             converted_df,
             peptide_col,
@@ -305,25 +640,240 @@ def dataset_prep_run():
             indicator=peptide_indicator,
             after=peptide_after,
         )
-        if 'Accession' in converted_df.columns:
-            converted_df = converted_df.rename(columns={'Accession': 'UniProt Accession'})
+        logger.info(
+            'Dataset prep peptide formatting finished in %.2fs.',
+            time.perf_counter() - peptide_format_started,
+        )
+
+        if 'UniProt Accession' in converted_df.columns:
+            log_col = 'UniProt ID Update Log'
+            mapped_series = converted_df['UniProt Accession']
+            mapped_text = mapped_series.fillna('').astype(str).str.strip()
+            unmapped_mask = mapped_text.eq('')
+            # Keep unmapped rows and mark the mapping failure explicitly.
+            converted_df.loc[unmapped_mask, 'UniProt Accession'] = ''
+            _append_log_message(converted_df, unmapped_mask, log_col, 'Could not map accession')
+
+        if 'UniProt Accession' in converted_df.columns:
+            redirect_started = time.perf_counter()
+            converted_df, redirect_stats = _apply_uniprot_redirect_updates(
+                converted_df,
+                accession_col='UniProt Accession',
+                accession_out_col='UniProt Accession',
+                id_sep=accession_separator,
+            )
+            logger.info(
+                'Dataset prep redirect checks finished in %.2fs; candidate rows=%s, unique accessions=%s, updated rows=%s, updated accessions=%s.',
+                time.perf_counter() - redirect_started,
+                redirect_stats['candidate_rows'],
+                redirect_stats['unique_candidates'],
+                redirect_stats['updated_rows'],
+                redirect_stats['updated_accessions'],
+            )
+
+        from proteomeScoutAPI import ProteomicDataset
+        from proteomescout_app.annotate.routes import (
+            _accession_not_found_mask,
+            _add_activation_loop_column,
+            _normalize_spyc_prediction_columns,
+            _project_remapped_accessions,
+            _remap_key,
+            _resolve_annotation_duplicates,
+        )
+
+        _configure_api_data_dir()
+
+        accession_for_annotation = 'UniProt Accession' if 'UniProt Accession' in converted_df.columns else 'Accession'
+        peptide_for_annotation = 'Formatted Peptide' if 'Formatted Peptide' in converted_df.columns else peptide_col
+
+        if accession_for_annotation not in converted_df.columns:
+            return jsonify({'error': 'Prepared dataset is missing an accession column for annotation.'}), 400
+        if peptide_for_annotation not in converted_df.columns:
+            return jsonify({'error': 'Prepared dataset is missing a peptide column for annotation.'}), 400
+
+        annotation_started = time.perf_counter()
+        dataset = ProteomicDataset(
+            converted_df,
+            accession_col=accession_for_annotation,
+            peptide_col=peptide_for_annotation,
+            find_site=True,
+            GO_terms=True,
+        )
+        dataset.annotate_dataset()
+        logger.info(
+            'Dataset prep initial annotation finished in %.2fs.',
+            time.perf_counter() - annotation_started,
+        )
+
+        max_coverage_changed_flags = [False] * len(converted_df)
+
+        if update_max_coverage:
+            coverage_started = time.perf_counter()
+            failed_mask = _accession_not_found_mask(dataset.dataset)
+            remap_by_key = {}
+
+            if failed_mask.any():
+                failed_rows = dataset.dataset[failed_mask]
+                if accession_for_annotation in failed_rows.columns and peptide_for_annotation in failed_rows.columns:
+                    failed_accessions = failed_rows[accession_for_annotation].tolist()
+                    failed_peptides = failed_rows[peptide_for_annotation].tolist()
+                    for original_accession, peptide in zip(failed_accessions, failed_peptides):
+                        original = '' if pd.isna(original_accession) else str(original_accession).strip()
+                        candidate = get_maximal_coverage_accession(coverage_species, peptide)
+                        candidate = str(candidate or '').strip()
+                        updated = candidate or original
+                        if updated and updated != original:
+                            remap_by_key[_remap_key(original_accession, peptide)] = updated
+
+            remapped_accessions = _project_remapped_accessions(
+                converted_df,
+                accession_for_annotation,
+                peptide_for_annotation,
+                remap_by_key,
+            )
+            remapped_count = 0
+            max_coverage_changed_flags = []
+            for original, remapped in zip(converted_df[accession_for_annotation].tolist(), remapped_accessions):
+                original_text = '' if pd.isna(original) else str(original).strip()
+                was_changed = bool(remapped) and remapped != original_text
+                max_coverage_changed_flags.append(was_changed)
+                if was_changed:
+                    remapped_count += 1
+
+            if remapped_count > 0:
+                remap_df = converted_df.copy()
+                remap_df['UniProt for Maximal Coverage'] = remapped_accessions
+                reannotation_started = time.perf_counter()
+                remap_dataset = ProteomicDataset(
+                    remap_df,
+                    accession_col='UniProt for Maximal Coverage',
+                    peptide_col=peptide_for_annotation,
+                    find_site=True,
+                    GO_terms=True,
+                )
+                remap_dataset.annotate_dataset()
+                dataset = remap_dataset
+                logger.info(
+                    'Dataset prep maximal-coverage re-annotation finished in %.2fs for %s remapped rows.',
+                    time.perf_counter() - reannotation_started,
+                    remapped_count,
+                )
+            else:
+                dataset.dataset['UniProt for Maximal Coverage'] = _project_remapped_accessions(
+                    dataset.dataset,
+                    accession_for_annotation,
+                    peptide_for_annotation,
+                    remap_by_key,
+                )
+
+            logger.info(
+                'Dataset prep maximal-coverage phase finished in %.2fs with %s remapped rows.',
+                time.perf_counter() - coverage_started,
+                remapped_count,
+            )
+
+        _resolve_annotation_duplicates(dataset.dataset)
+        _normalize_spyc_prediction_columns(dataset.dataset)
+
+        if (
+            original_accession_backup_col
+            and original_accession_backup_col in converted_df.columns
+            and original_accession_backup_col not in dataset.dataset.columns
+            and len(dataset.dataset) == len(converted_df)
+        ):
+            dataset.dataset[original_accession_backup_col] = converted_df[original_accession_backup_col].values
+
+        if (
+            'UniProt ID Update Log' in converted_df.columns
+            and len(dataset.dataset) == len(converted_df)
+        ):
+            pre_annotation_logs = converted_df['UniProt ID Update Log'].fillna('').astype(str)
+            if 'UniProt ID Update Log' in dataset.dataset.columns:
+                annotation_logs = dataset.dataset['UniProt ID Update Log'].fillna('').astype(str)
+                dataset.dataset['UniProt ID Update Log'] = [
+                    '; '.join(part for part in [left.strip(), right.strip()] if part)
+                    for left, right in zip(pre_annotation_logs.tolist(), annotation_logs.tolist())
+                ]
+            else:
+                dataset.dataset['UniProt ID Update Log'] = pre_annotation_logs
+
+        if 'UniProt for Maximal Coverage' in dataset.dataset.columns and 'UniProt Accession' in dataset.dataset.columns:
+            dataset.dataset['UniProt Accession'] = dataset.dataset['UniProt for Maximal Coverage']
+
+            if len(max_coverage_changed_flags) == len(dataset.dataset):
+                changed_mask = pd.Series(max_coverage_changed_flags, index=dataset.dataset.index)
+                log_col = 'UniProt ID Update Log'
+                existing_logs = dataset.dataset.get(log_col, pd.Series([''] * len(dataset.dataset), index=dataset.dataset.index))
+                had_unmapped_note_mask = changed_mask & existing_logs.fillna('').astype(str).str.contains(
+                    'Could not map accession',
+                    regex=False,
+                )
+
+                # If maximal coverage found a sequence-based match, replace the stale unmapped note.
+                _replace_log_message(
+                    dataset.dataset,
+                    had_unmapped_note_mask,
+                    log_col,
+                    'Could not map accession',
+                    'Match found by sequence search',
+                )
+
+                _append_log_message(
+                    dataset.dataset,
+                    changed_mask & ~had_unmapped_note_mask,
+                    log_col,
+                    'Updated for maximal coverage',
+                )
+
+        if 'UniProt Accession' in dataset.dataset.columns:
+            final_unmapped_mask = dataset.dataset['UniProt Accession'].fillna('').astype(str).str.strip().eq('')
+            dataset.dataset.loc[final_unmapped_mask, 'UniProt Accession'] = ''
+            _append_log_message(dataset.dataset, final_unmapped_mask, 'UniProt ID Update Log', 'Could not map accession')
+
+            # Rows that were initially unmapped but eventually resolved should reflect the recovery.
+            final_mapped_mask = ~final_unmapped_mask
+            _replace_log_message(
+                dataset.dataset,
+                final_mapped_mask,
+                'UniProt ID Update Log',
+                'Could not map accession',
+                'Match found by sequence search',
+            )
+
+        if row_id_col in dataset.dataset.columns:
+            dataset.dataset = dataset.dataset.drop(columns=[row_id_col])
+        if (
+            'modification_sites' in dataset.dataset.columns
+            and 'site_in_activation_loop' not in dataset.dataset.columns
+        ):
+            _add_activation_loop_column(dataset.dataset, accession_for_annotation)
+
+        converted_df = dataset.dataset
     except PeptideSequenceError as exc:
         return jsonify({'error': f'Peptide formatting failed: {exc}'}), 400
     except Exception as exc:
         logger.exception('Dataset prep run failed')
         return jsonify({'error': f'Dataset preparation failed: {exc}'}), 500
 
+    logger.info(
+        'Dataset prep run completed in %.2fs with %s output rows and %s output columns.',
+        time.perf_counter() - started_at,
+        int(converted_df.shape[0]),
+        int(converted_df.shape[1]),
+    )
+
     out = io.StringIO()
     converted_df.to_csv(out, index=False)
 
     original_name = os.path.basename(file.filename or 'dataset')
     base = original_name.rsplit('.', 1)[0] if '.' in original_name else original_name
-    download_name = f'{base}_kstar_prepared.csv'
+    download_name = f'{base}_kstar_prepared_annotated.csv'
 
     headers = {'Content-Disposition': f'attachment; filename="{download_name}"'}
     if rename_map:
         headers['X-Data-Columns-Renamed'] = ' | '.join(rename_map.values())
     if not missing_rows.empty:
         headers['X-Missing-Accessions'] = str(len(missing_rows))
+    headers['X-Integrated-Annotation'] = '1'
 
     return Response(out.getvalue(), mimetype='text/csv', headers=headers)

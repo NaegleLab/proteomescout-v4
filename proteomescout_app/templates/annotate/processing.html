@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>KSTAR Tools</title>
+  <title>Dataset Processing - ProteomeScout</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <style>
@@ -77,36 +77,37 @@
       background: rgba(255, 255, 255, 0.95);
       border: 1px solid var(--line);
       border-radius: 16px;
-      padding: 1.2rem 1.3rem;
       box-shadow: 0 14px 36px rgba(18, 42, 54, 0.04);
-      margin-bottom: 1rem;
+      padding: 1.4rem 1.5rem;
+      margin-bottom: 1.2rem;
     }
     .hero h1 {
       font-weight: 800;
       letter-spacing: -0.03em;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.5rem;
     }
-    .tool-card {
+
+    .mode-card {
       background: rgba(255, 255, 255, 0.96);
       border: 1px solid var(--line);
       border-radius: 16px;
       box-shadow: 0 14px 36px rgba(18, 42, 54, 0.04);
-      padding: 1.15rem 1.2rem;
-      height: 100%;
+      padding: 1.2rem 1.2rem 1rem;
+      min-height: 100%;
       display: flex;
       flex-direction: column;
     }
-    .tool-card.plotting {
-      border-top: 5px solid #6c4ccf;
+    .mode-card.annotation {
+      border-top: 5px solid #1f7ac0;
     }
-    .tool-card.prep {
+    .mode-card.prep {
       border-top: 5px solid #2d995b;
     }
     .card-head {
       display: flex;
       align-items: center;
       gap: 0.6rem;
-      margin-bottom: 0.55rem;
+      margin-bottom: 0.65rem;
     }
     .icon-badge {
       width: 2.1rem;
@@ -118,44 +119,60 @@
       font-size: 1.1rem;
       flex: 0 0 auto;
     }
-    .plotting .icon-badge {
-      background: #f3efff;
-      color: #6c4ccf;
-      border: 1px solid #ddd1ff;
+    .annotation .icon-badge {
+      background: #eaf4ff;
+      color: #1f7ac0;
+      border: 1px solid #c9dff4;
     }
     .prep .icon-badge {
       background: #eaf8ef;
       color: #2d995b;
       border: 1px solid #cbe8d3;
     }
-    .tool-card h2 {
+    .mode-card h2 {
       font-size: 1.2rem;
       font-weight: 800;
       margin: 0;
     }
-    .tool-card .btn {
+    .mode-card p {
+      margin-bottom: 0.75rem;
+      line-height: 1.45;
+    }
+    .example {
+      background: #f7fbfc;
+      border: 1px solid #d6eaf0;
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92rem;
+      margin-bottom: 0.9rem;
+    }
+    .btn-mode {
       margin-top: auto;
+      align-self: flex-start;
+      border-radius: 8px;
+      padding: 0.5rem 1.05rem;
       font-weight: 700;
+      text-decoration: none;
+      display: inline-block;
     }
-    .btn-plotting {
-      color: #6c4ccf;
-      border-color: #6c4ccf;
-      background: #f7f4ff;
+    .btn-annotation {
+      color: #1f7ac0;
+      border: 1px solid #1f7ac0;
+      background: #f4f9ff;
     }
-    .btn-plotting:hover {
+    .btn-annotation:hover {
       color: #fff;
-      background: #6c4ccf;
-      border-color: #6c4ccf;
+      background: #1f7ac0;
     }
     .btn-prep {
       color: #2d995b;
-      border-color: #2d995b;
+      border: 1px solid #2d995b;
       background: #f2fcf5;
     }
     .btn-prep:hover {
       color: #fff;
       background: #2d995b;
-      border-color: #2d995b;
     }
     @media (max-width: 900px) {
       .top-nav .inner,
@@ -174,40 +191,42 @@
 
   <div class="container page-shell">
     <section class="hero">
-      <h1>KSTAR</h1>
+      <h1>Dataset Processing</h1>
       <p class="text-muted mb-0">
-        Choose a KSTAR workflow. Use plotting for activity/FPR result visualization,
-        or dataset prep to standardize phosphoproteomics input files.
+        Choose the workflow that fits your data. Both options end with a downloadable, annotated output.
       </p>
     </section>
 
-    <div class="row g-3">
+    <section class="row g-3" aria-label="Dataset processing options">
       <div class="col-md-6">
-        <div class="tool-card plotting">
-          <div class="card-head">
-            <span class="icon-badge" aria-hidden="true"><i class="bi bi-file-earmark-bar-graph"></i></span>
-            <h2>KSTAR Plotting</h2>
-          </div>
-          <p class="text-muted">
-            Upload KSTAR activity and FPR result files and build publication-ready kinase activity plots.
-          </p>
-          <a class="btn btn-plotting" href="{{ url_for('kstar.plotting_landing') }}">Open Plotting</a>
+      <article class="mode-card annotation">
+        <div class="card-head">
+          <span class="icon-badge" aria-hidden="true"><i class="bi bi-file-earmark-spreadsheet"></i></span>
+          <h2>Dataset Annotation</h2>
         </div>
+        <p>
+          If you already have UniProt IDs and peptide sequences with modifications indicated in lower case,
+          use this workflow to append protein and site information.
+        </p>
+        <div class="example">Example peptide format: ANsFVGTAQYV</div>
+        <a class="btn-mode btn-annotation" href="{{ url_for('annotate.dataset_annotation') }}">Open Dataset Annotation</a>
+      </article>
       </div>
+
       <div class="col-md-6">
-        <div class="tool-card prep">
-          <div class="card-head">
-            <span class="icon-badge" aria-hidden="true"><i class="bi bi-file-earmark-spreadsheet-fill"></i></span>
-            <h2>KSTAR Dataset Prep</h2>
-          </div>
-          <p class="text-muted">
-            Prepare phosphoproteomics datasets by converting accessions, formatting peptides,
-            and adding <strong>data:</strong> prefixes to quantitative columns.
-          </p>
-          <a class="btn btn-prep" href="{{ url_for('kstar.dataset_prep') }}">Open Dataset Prep</a>
+      <article class="mode-card prep">
+        <div class="card-head">
+          <span class="icon-badge" aria-hidden="true"><i class="bi bi-file-earmark-spreadsheet-fill"></i></span>
+          <h2>Dataset Preparation</h2>
         </div>
+        <p>
+          If you want to maximize coverage of your UniProt IDs, have mixed identifiers, and/or have peptides
+          that need processing, use this workflow to perform preparation and annotation together. This is the same process as found under KSTAR Dataset Preparation.
+        </p>
+        <a class="btn-mode btn-prep" href="{{ url_for('kstar.dataset_prep') }}">Open Dataset Preparation</a>
+      </article>
       </div>
-    </div>
+    </section>
   </div>
 </body>
 </html>
