@@ -130,6 +130,33 @@
     .method-template-list li + li {
       margin-top: 0.85rem;
     }
+    .version-table-container {
+      margin-top: 1rem;
+      overflow-x: auto;
+    }
+    .version-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .version-table th,
+    .version-table td {
+      border: 1px solid #cfe4e8;
+      padding: 0.6rem 0.75rem;
+      vertical-align: top;
+    }
+    .version-table th {
+      background: #eef8fa;
+      color: #1e3e4c;
+      font-weight: 600;
+      text-align: left;
+    }
+    .version-table tbody tr:nth-child(even) {
+      background: #ffffff;
+    }
+    .version-table tbody tr:nth-child(odd) {
+      background: #f8fcfd;
+    }
   </style>
 </head>
 <body>
@@ -182,11 +209,17 @@
           Crowl S, Jordan BT, Ahmed H, Ma CX, Naegle KM. KSTAR: An algorithm to predict patient-specific kinase activities from phosphoproteomic data. Nat Commun. 2022;13(1):4283. doi: 10.1038/s41467-022-32017-5.
           <a href="https://pubmed.ncbi.nlm.nih.gov/35879309/" target="_blank" rel="noreferrer">PubMed</a>
         </li>
+          <li>
+          <strong>SpY-C:</strong>
+          Kandoor A, Silva Oliveira AC, Machida K, Blagoev BA, Naegle KM. SpY-C: Supervised Learning of Phosphopeptide Sequence Constraints Enables Global Prediction of SH2 Domain Binding 2026 doi: 10.64898/2026.08.18.744962
+          <a href="https://doi.org/10.64898/2026.08.18.744962" target="_blank" rel="noreferrer">BioRxiv</a>
+        </li>
       </ul>
 
       <div class="methods-details">
         <h2>Methods Details</h2>
         <p>Use these version details and templates to document reproducible ProteomeScout workflows.</p>
+
 
         <ul class="version-list">
           <li><strong>proteomescout-v4 version:</strong> {{ proteomescout_web_version }}</li>
@@ -194,7 +227,7 @@
           <li><strong>ProteomeScout_Dataset version:</strong> {{ proteomescout_dataset_version }}</li>
         </ul>
 
-       
+        <h3 class="mt-4 fs-5 fw-bold">Methods Boilerplate Templates</h3>
         <ul class="method-template-list">
           <li>
             <strong>Protein Viewer Methods:</strong>
@@ -209,6 +242,82 @@
             The dataset was prepared on &lt;date&gt;, formatting peptides and unifying UniProt identifiers, and annotated using the ProteomeScout web version {{ proteomescout_web_version }}, coupled with ProteomeScoutAPI version {{ proteomescout_api_version }}, with ProteomeScout data version {{ proteomescout_dataset_version }}.
           </li>
         </ul>
+      </div>
+    </section>
+
+    <section class="card-block">
+      <h2>Version History</h2>
+      <div class="version-table-container">
+        <table class="version-table">
+          <thead>
+            <tr>
+              <th>ProteomeScout_Dataset</th>
+              <th>Data Update Notes</th>
+              <th>ProteomeScoutAPI</th>
+              <th>API Update Notes</th>
+              <th>ProteomeScout-v4 (web)</th>
+              <th>Web Update Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>N/A</td>
+              <td>—</td>
+              <td>v2.0.4</td>
+              <td>Last API version before ProteomeScout v4 update</td>
+              <td>N/A</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>v1 (2026-01-23)</td>
+              <td>Major update to 1/18/2026</td>
+              <td>v3.0.0</td>
+              <td>Automatic fetch of ProteomeScout data from Figshare; Dataset annotation class was added; Update to match new ProteomeScout data file</td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>v2 = v3 (2026-04-27)</td>
+              <td>Added exons</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>v4 = v5 = v6 (2026-05-15)</td>
+              <td>Added kinase activation loops</td>
+              <td>v3.1.0</td>
+              <td>Added kinase activation loops and exons in parsing and annotation</td>
+              <td>v4.1.0</td>
+              <td>Adds activation loops</td>
+            </tr>
+            <tr>
+              <td>v7 (2026-06-18)</td>
+              <td>Integrated dbPTM 2025 data</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>v8 (2026-06-29)</td>
+              <td>v8 added SpY-C beta data v0.1 configuration</td>
+              <td>v3.1.1</td>
+              <td>SpY-C parsing and bug fix: API now does not pass through PTMs connected to deprecated datasets (this can be overridden).</td>
+              <td>v4.2.1</td>
+              <td>Adds SpY-C as feature to tracks, also updated PTM information on web selection for all available tracks.</td>
+            </tr>
+            <tr>
+              <td>v9 (2026-08-17)</td>
+              <td>SpY-C v1.0 final data replaced beta data</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
   </main>
